@@ -1,9 +1,9 @@
 # 乔飞战术板 · 改进记录与交接文稿
 
 > 给接手的 AI（Claude）看的。读完应能无缝接着改。
-> 当前版本：v1.3 ｜ 文件：单文件 `index.html`（929 行，零依赖）
+> 当前版本：v1.4 ｜ 文件：单文件 `index.html`（零依赖）
 > 线上：https://9yuluo.github.io/qf-board/ ｜ 仓库：github.com/9yuluo/qf-board（public）
-> 本机备份：~/Downloads/乔飞战术板-v1.3.html
+> 本机备份：~/Downloads/乔飞战术板-v1.4.html
 
 ---
 
@@ -47,9 +47,15 @@
 - 王者0（集训后再加，现在投入太早）
 - 每个场景含：rank/title/sit(情境)/q(问题)/twists(变招提示数组)/tokens(初始棋子位置)
 
-### 关键交互
-- **攒招**：摆一种跑法→点"记下这一招"→变成带编号的淡虚影留在场上→金色"你"回起点→再摆下一种。计数+话术推他想更多种。这是核心——比"摆得对不对"更重要的是"能想出几种"。
-- **变招提示**：默认**收起**，点"💡 想要提示？"才展开（先自己想，卡住才求助）。展开后是几个"如果…呢"标签，点一个逼他换情况再想。
+### 关键交互（v1.4 大改 —— 从"摆位置"升级到"画完整解法"）
+- **核心模型变了**：旧版是"拖棋子到一个位置=一招"。新版是 **画笔描线 + 多步 + 进球闭环**：
+  - 顶部三支画笔：🏃跑动(实线) / ⚽传球(虚线) / ⚡带球(波浪线) + ✋移动人(默认，拖棋子布置局面)
+  - 选一支笔 → **手指在场上描线**（可弯、可绕、可画S形过人），落笔即成对应线型，带步号
+  - 一套解法 = 多笔串起来打进一个球 → 点 **"⚽这套打进了！"** 收尾存为一种解法
+  - "复位重画"清当前未存的笔；"撤销一笔"删最后一笔；已存的解法淡显在场上当参照
+  - 攒的单位从"几招"变成 **"几套通往进球的完整解法"** —— 同一开局想出几种不同打法 = 真发散
+- **变招提示**：默认收起，点"💡 想要提示？"才展开（先自己想，卡住才求助）。
+- **数据捕获（这是看懂他思路的关键）**：保存时，每套解法的**每一笔**都存下来：type(run/pass/dribble) + 完整路径点数组 + 顺序。导出 JSON 后能完整复现他怎么想的——先传还是先带、跑动朝不朝空当、几套是真不同还是换汤不换药、路径合不合理。
 
 ---
 
@@ -66,25 +72,33 @@
 | 5 | **图标修复（折腾了3次）** | data:URL 图标 iOS 不认（显示成"乔"字）→ 改真实 PNG；qlmanage 转的 PNG 星跑到左上角 → 改用 Pillow 逐像素画居中金色★铺满画布。 |
 | 6 | **轨迹三线型升级（v1.3 核心）** | 原版所有移动都是同一种彩虚线，跑动和传球分不清，球还根本不画线。改成战术板国际通用线型语言：**实线=跑动 / 虚线=传球 / 波浪线=带球**，颜色仍分你/队友/对手；路线改平滑贝塞尔曲线；自动判定带球（球员+球一起移动→波浪线并抑制重复球线）；图例加说明。教育价值：乔飞从小用对符号=顺带学会看懂专业战术图。 |
 | 7 | **导出/导入备份** | localStorage 是单设备本地存档，清缓存/换设备会丢。历史页加两按钮：导出全部数据成 JSON 文件、导入恢复（带格式校验+覆盖确认）。用于换设备恢复、发给 AI 做月度复盘。（注：用户本想"保存直接上传 git"，但 public 静态页嵌 token 会暴露，安全红线，所以先做手动导出；真要自动云同步得上 Cloudflare Worker 中转。） |
+| 8 (v1.4) | **引擎重做：手指描线 + 完整解法 + 进球闭环 + 富数据** | 用户反馈三点：①闭环不清晰，要从开局到进球的完整链路再想下一种；②轨迹是起点→终点直线，画不出真实跑动/带球路线；③希望从"摆的过程"看到他思路、给数据能复盘。**全部在 Pitch 控制器重做解决**：拖棋子→手指描线；单点位置→多笔序列；一招→一套通往进球的完整解法；存档从"几招"升级到"每笔的类型+完整路径点+顺序"。这是从"快照"到"完整解法"的范式升级，是本项目目前最大的一次改动。 |
 
 ---
 
-## 五、关键代码位置（index.html，方便定位）
+## 五、关键代码位置（index.html，v1.4 后行号有变，用函数名定位）
 
-- 存储层 `store` 对象：约 410 行（三层降级 getJSON/setJSON）
-- 存储 keys `var K`：第 423 行（custom/sessions/progress/current/ch）
-- 场景库 `BUILTIN` 数组：约 430-490 行
-- `state` 对象：约 636 行
-- 共享战术板控制器 `Pitch(boardId,trailId)`：约 488 行起
-  - **`drawTrails()`**：轨迹绘制核心（三线型判定在这）
-  - **`curvePath(x1,y1,x2,y2)`**：平滑曲线生成（二次贝塞尔）
-  - **`wavyPath(x1,y1,x2,y2)`**：波浪线生成（正弦，末端收敛便于箭头）
-  - 带球判定：球起点贴某球员起点 && 球终点贴该球员终点 → 那人带球
-- SVG 箭头 marker 定义（含 `ar-ball` 传球箭头）：约 234 行
-- `bind()` 事件绑定（含导出/导入逻辑）：约 717 行起
-- 导出 JSON 结构：`{_app:"qiaofei-tactics-board",_version,_exportedAt,custom,sessions,challenges,progress,current}`
+- 存储层 `store` 对象：三层降级 getJSON/setJSON（window.storage→localStorage→内存）
+- 存储 keys `var K`：custom/sessions/progress/current/ch
+- 场景库 `BUILTIN` 数组：14 个场景
+- `state` 对象、`Pitch(boardId,trailId)` 共享战术板控制器（v1.4 已重写）
+- **Pitch 控制器内部（v1.4 引擎核心）**：
+  - 状态：`tokens`(棋子) / `pen`(当前画笔 null|run|pass|dribble) / `strokes`(当前这套已画的笔) / `solutions`(已存的完整解法) / `drawing`(正在描的笔)
+  - **`drawTrails()`**：渲染已存解法(淡显)+当前笔(实显带步号)+正在画的笔(跟手)
+  - **`smoothPath(pts)`**：手指描的多点路径→平滑折线(中点二次贝塞尔)
+  - **`wavyAlong(pts)`**：沿描线路径生成波浪线(带球)，按弧长重采样+垂直正弦
+  - **`strokeStyle(p,type)`**：按 run/pass/dribble 上色和线型
+  - board 的 `pointerdown` 监听：pen 非空时接管描线
+  - 对外 API：`setPen/getPen/strokeCount/undoStroke/commitSolution/solutionCount/solutions/clearAll/onChange`，旧 API `set/tokens/add/edit/reset/draw` 保留（挑战页 chPitch 仍用）
+- `setPenUI(pen)`：画笔按钮高亮 + 提示文案
+- `updateOptUI()`：解法计数 + 鼓励多套的话术
+- `saveSession()`：保存当天，**富数据在这**（solutions 数组：每套 steps，每笔 type+points）
+- `bind()`：事件绑定（画笔切换、撤销、进球、复位、导出/导入）
+- SVG 箭头 marker 定义（含 `ar-ball`）：约 234 行
+- 导出 JSON 结构：`{_app:"qiaofei-tactics-board",_version:"1.4",_exportedAt,custom,sessions,challenges,progress,current}`
+- session 结构（v1.4）：`{id,date,scn,rank,stars,solutions:[{steps:[{type,points:[{x,y}]}]}],solCount,ans,note}`
 
-坐标系：棋子位置用百分比（x,y ∈ 0-100），`tokens` 里每个有 x,y(当前) 和 x0,y0(起点)。战术板 `aspect-ratio:3/4` 竖屏，进攻方向向上。
+坐标系：所有坐标用百分比（x,y ∈ 0-100）。画笔路径 `points` 是百分比点数组。战术板 `aspect-ratio:3/4` 竖屏，进攻方向向上。注意 v1.4 后 token 不再有 x0/y0（起点），轨迹改由独立的 strokes 记录。
 
 ---
 
