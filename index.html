@@ -87,6 +87,11 @@
   .legend{display:flex;gap:14px;flex-wrap:wrap;margin:10px 2px 2px;font-size:11.5px;color:var(--mut2)}
   .legend span{display:inline-flex;align-items:center;gap:5px}
   .lg{width:11px;height:11px;border-radius:50%}
+  .legend.linetypes{margin-top:3px;font-size:11px}
+  .ln{width:20px;height:0;display:inline-block;position:relative}
+  .ln.solid{border-top:2.5px solid var(--ink)}
+  .ln.dash{border-top:2.5px dashed var(--ink)}
+  .ln.wavy{height:7px;background:repeating-linear-gradient(90deg,transparent 0 2px,var(--ink) 2px 3px);-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='7'%3E%3Cpath d='M0,3.5 Q2.5,0 5,3.5 T10,3.5 T15,3.5 T20,3.5' fill='none' stroke='black' stroke-width='2'/%3E%3C/svg%3E") no-repeat center;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='7'%3E%3Cpath d='M0,3.5 Q2.5,0 5,3.5 T10,3.5 T15,3.5 T20,3.5' fill='none' stroke='black' stroke-width='2'/%3E%3C/svg%3E") no-repeat center;background:var(--ink)}
 
   /* 攒招 strip */
   .opts{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:12px 13px;margin-top:12px}
@@ -234,6 +239,7 @@
         <marker id="ar-me" markerWidth="7" markerHeight="7" refX="5.5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--me)"/></marker>
         <marker id="ar-team" markerWidth="7" markerHeight="7" refX="5.5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--team)"/></marker>
         <marker id="ar-opp" markerWidth="7" markerHeight="7" refX="5.5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--opp)"/></marker>
+        <marker id="ar-ball" markerWidth="7" markerHeight="7" refX="5.5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--ball)"/></marker>
       </defs></svg>
     </div>
 
@@ -243,6 +249,11 @@
       <span><i class="lg" style="background:var(--opp)"></i>对手</span>
       <span><i class="lg" style="background:var(--ball)"></i>球</span>
       <span style="color:#6f6757">↑ 进攻方向</span>
+    </div>
+    <div class="legend linetypes">
+      <span><i class="ln solid"></i>实线＝跑动</span>
+      <span><i class="ln dash"></i>虚线＝传球</span>
+      <span><i class="ln wavy"></i>波浪＝带球</span>
     </div>
 
     <div class="bctrl">
@@ -505,27 +516,85 @@ function Pitch(boardId,trailId){
     var wh=clientWH(),W=wh[0],H=wh[1];
     trails.setAttribute("viewBox","0 0 "+W+" "+H);
     Array.prototype.slice.call(trails.children).forEach(function(c){if(c.tagName.toLowerCase()!=="defs")c.remove();});
+    // 攒招的虚影路线（淡化的"你的跑动"），保留编号
     ghosts.forEach(function(g){
-      var l=mk("line"); l.setAttribute("x1",g.x0/100*W);l.setAttribute("y1",g.y0/100*H);
-      l.setAttribute("x2",g.x/100*W);l.setAttribute("y2",g.y/100*H);
-      l.setAttribute("stroke","var(--me)");l.setAttribute("stroke-width","2");l.setAttribute("stroke-dasharray","3 5");
-      l.setAttribute("stroke-linecap","round");l.setAttribute("opacity","0.32");trails.appendChild(l);
+      var p=mk("path");
+      p.setAttribute("d",curvePath(g.x0/100*W,g.y0/100*H,g.x/100*W,g.y/100*H));
+      p.setAttribute("fill","none");
+      p.setAttribute("stroke","var(--me)");p.setAttribute("stroke-width","2");p.setAttribute("stroke-dasharray","1 6");
+      p.setAttribute("stroke-linecap","round");p.setAttribute("opacity","0.3");trails.appendChild(p);
       var c=mk("circle");c.setAttribute("cx",g.x/100*W);c.setAttribute("cy",g.y/100*H);c.setAttribute("r","8");
       c.setAttribute("fill","#2c2418");c.setAttribute("stroke","var(--me)");c.setAttribute("stroke-opacity","0.5");trails.appendChild(c);
       var tx=mk("text");tx.setAttribute("x",g.x/100*W);tx.setAttribute("y",g.y/100*H+3.5);tx.setAttribute("text-anchor","middle");
       tx.setAttribute("font-size","10");tx.setAttribute("font-family","Oswald,sans-serif");tx.setAttribute("fill","var(--me)");
       tx.setAttribute("opacity","0.8");tx.textContent=g.n;trails.appendChild(tx);
     });
+    // 找到球，用于判定"带球"（球员和球一起移动 = 盘带）
+    var ball=null;
+    tokens.forEach(function(t){if(t.role==="ball")ball=t;});
+    var ballMoved=ball&&(Math.abs(ball.x-ball.x0)>=1.5||Math.abs(ball.y-ball.y0)>=1.5);
+    var ballDribbledBy=null;
+    if(ball&&ballMoved){
+      // 球的起点贴着哪个球员、终点也贴着同一人 → 那人带球
+      tokens.forEach(function(t){
+        if(t.role==="ball")return;
+        var nearStart=Math.hypot(t.x0-ball.x0,t.y0-ball.y0)<7;
+        var nearEnd=Math.hypot(t.x-ball.x,t.y-ball.y)<7;
+        if(nearStart&&nearEnd)ballDribbledBy=t;
+      });
+    }
+    // 球员路线
     tokens.forEach(function(t){
       if(t.role==="ball")return;
       if(Math.abs(t.x-t.x0)<1.5&&Math.abs(t.y-t.y0)<1.5)return;
-      var l=mk("line");l.setAttribute("x1",t.x0/100*W);l.setAttribute("y1",t.y0/100*H);
-      l.setAttribute("x2",t.x/100*W);l.setAttribute("y2",t.y/100*H);
-      var c=t.role==="me"?"var(--me)":t.role==="team"?"var(--team)":"var(--opp)";
-      l.setAttribute("stroke",c);l.setAttribute("stroke-width","2.5");l.setAttribute("stroke-dasharray","6 5");
-      l.setAttribute("stroke-linecap","round");l.setAttribute("opacity","0.9");l.setAttribute("marker-end","url(#ar-"+t.role+")");
-      trails.appendChild(l);
+      var col=t.role==="me"?"var(--me)":t.role==="team"?"var(--team)":"var(--opp)";
+      var p=mk("path");
+      p.setAttribute("d",curvePath(t.x0/100*W,t.y0/100*H,t.x/100*W,t.y/100*H));
+      p.setAttribute("fill","none");
+      p.setAttribute("stroke",col);p.setAttribute("stroke-linecap","round");
+      p.setAttribute("opacity","0.92");p.setAttribute("marker-end","url(#ar-"+t.role+")");
+      if(t===ballDribbledBy){
+        // 带球 = 波浪线
+        p.setAttribute("d",wavyPath(t.x0/100*W,t.y0/100*H,t.x/100*W,t.y/100*H));
+        p.setAttribute("stroke-width","2.5");
+      }else{
+        // 跑动 = 实线
+        p.setAttribute("stroke-width","2.8");
+      }
+      trails.appendChild(p);
     });
+    // 球的路线（传球 = 虚线），但若是被带球则不单独画球线
+    if(ball&&ballMoved&&!ballDribbledBy){
+      var p=mk("path");
+      p.setAttribute("d",curvePath(ball.x0/100*W,ball.y0/100*H,ball.x/100*W,ball.y/100*H));
+      p.setAttribute("fill","none");
+      p.setAttribute("stroke","var(--ball)");p.setAttribute("stroke-width","2.2");p.setAttribute("stroke-dasharray","7 6");
+      p.setAttribute("stroke-linecap","round");p.setAttribute("opacity","0.95");p.setAttribute("marker-end","url(#ar-ball)");
+      trails.appendChild(p);
+    }
+  }
+  // 平滑曲线：起终点之间加一个轻微垂直偏移的控制点
+  function curvePath(x1,y1,x2,y2){
+    var mx=(x1+x2)/2, my=(y1+y2)/2;
+    var dx=x2-x1, dy=y2-y1, len=Math.hypot(dx,dy)||1;
+    var off=Math.min(len*0.12,14); // 弧度随长度，封顶
+    var cx=mx+(-dy/len)*off, cy=my+(dx/len)*off;
+    return "M"+x1+","+y1+" Q"+cx+","+cy+" "+x2+","+y2;
+  }
+  // 波浪线（带球）：沿主方向画正弦小波
+  function wavyPath(x1,y1,x2,y2){
+    var dx=x2-x1, dy=y2-y1, len=Math.hypot(dx,dy)||1;
+    var ux=dx/len, uy=dy/len;      // 单位方向
+    var px=-uy, py=ux;             // 垂直方向
+    var amp=4, waves=Math.max(2,Math.round(len/16));
+    var steps=waves*8, d="M"+x1+","+y1;
+    for(var i=1;i<=steps;i++){
+      var f=i/steps;
+      var bx=x1+dx*f, by=y1+dy*f;
+      var w=Math.sin(f*waves*Math.PI*2)*amp*(f<0.92?1:(1-f)/0.08); // 末端收敛便于箭头
+      d+=" L"+(bx+px*w)+","+(by+py*w);
+    }
+    return d;
   }
   function mk(t){return document.createElementNS("http://www.w3.org/2000/svg",t);}
   function drag(el,t){
