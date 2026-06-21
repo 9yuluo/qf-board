@@ -78,19 +78,8 @@
   .board.editing .tok .x{display:flex}
 
   .bctrl{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
-  /* 画笔工具栏 */
-  .pens{display:flex;gap:6px;margin-top:10px}
-  .pen{flex:1;background:var(--panel);border:1px solid var(--line);color:var(--mut2);font:inherit;font-size:12.5px;font-weight:600;padding:9px 4px;border-radius:10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;transition:.12s}
-  .pen .pi{font-size:17px;line-height:1}
-  .pen:hover{border-color:#52483680}
-  .pen.on{color:#10100c}
-  .pen[data-pen="run"].on{background:var(--me);border-color:var(--me)}
-  .pen[data-pen="pass"].on{background:var(--ball);border-color:var(--ball)}
-  .pen[data-pen="dribble"].on{background:var(--team);border-color:var(--team);color:#fff}
-  .pen.move.on{background:#3a3328;border-color:#6a5d40;color:var(--ink)}
-  .penhint{font-size:11.5px;color:var(--mut2);margin-top:7px;line-height:1.5;text-align:center}
+  .penhint{font-size:11.5px;color:var(--mut2);margin-top:9px;line-height:1.5;text-align:center}
   .board.drawing{cursor:crosshair}
-  .board.drawing .tok{pointer-events:none}
   .btn{flex:1;min-width:0;background:var(--panel);border:1px solid var(--line);color:var(--ink);font:inherit;font-weight:600;font-size:13px;padding:11px 8px;border-radius:11px;cursor:pointer;white-space:nowrap;transition:.15s}
   .btn:hover{border-color:#52483680}.btn.on{background:#2c271d;border-color:#6a5d40}
   .addmenu{position:absolute;bottom:calc(100% + 6px);left:0;right:0;background:var(--panel-2);border:1px solid var(--line);border-radius:11px;padding:5px;display:none;z-index:20}
@@ -272,16 +261,14 @@
       <span><i class="ln wavy"></i>波浪＝带球</span>
     </div>
 
-    <div class="pens" id="pens">
-      <button class="pen" data-pen="run"><span class="pi">🏃</span>跑动</button>
-      <button class="pen" data-pen="pass"><span class="pi">⚽</span>传球</button>
-      <button class="pen" data-pen="dribble"><span class="pi">⚡</span>带球</button>
-      <button class="pen move on" data-pen=""><span class="pi">✋</span>移动人</button>
-    </div>
-    <div class="penhint" id="penHint">选一支笔，用手指在场上画出路线——一步步把这球打进去。</div>
+    <div class="penhint" id="penHint">拖球员＝跑动；脚下有球一起拖＝带球；把球拖给队友＝传球。一步步把球打进，再点「这套打进了」。</div>
 
     <div class="bctrl">
       <button class="btn" id="undoBtn">↶ 撤销一笔</button>
+      <button class="oadd" id="goalBtn">⚽ 这套打进了！</button>
+      <button class="oclear" id="optClear">复位重画</button>
+    </div>
+    <div class="bctrl">
       <div class="btn" id="addWrap" style="position:relative">＋ 球员
         <div class="addmenu" id="addMenu">
           <button data-r="team">＋ 我方球员</button><button data-r="opp">＋ 对方球员</button><button data-r="ball">＋ 球</button>
@@ -293,10 +280,6 @@
     <div class="opts">
       <div class="oth"><span class="t">完整解法（每套都要打进球）</span><span class="c" id="optCount">0 套</span></div>
       <div class="ochips" id="ochips"></div>
-      <div class="orow">
-        <button class="oadd" id="goalBtn">⚽ 这套打进了！存为一种解法</button>
-        <button class="oclear" id="optClear">复位重画</button>
-      </div>
       <div class="onudge" id="onudge"></div>
     </div>
 
@@ -529,10 +512,9 @@ var DEF_TWISTS=["对方多上来一个人","你的队友没接到","换到另一
 function Pitch(boardId,trailId){
   var board=document.getElementById(boardId), trails=document.getElementById(trailId);
   var tokens=[], editing=false;
-  var pen=null;              // null=移动棋子模式; "run"/"pass"/"dribble"=画笔模式
-  var strokes=[];            // 当前这套解法已画的笔: {type,points:[{x,y}],n}
+  var strokes=[];            // 当前这套解法已画的笔: {type,points:[{x,y}]}
   var solutions=[];          // 已完成的解法(进球闭环): {steps:[strokes]}
-  var drawing=null;          // 正在画的笔
+  var drawing=null;          // 正在拖动产生的笔
   var onChange=null;         // 笔数/解法数变化回调
   function clientWH(){return [board.clientWidth,board.clientHeight];}
   function mk(t){return document.createElementNS("http://www.w3.org/2000/svg",t);}
@@ -642,51 +624,70 @@ function Pitch(boardId,trailId){
     }
   }
 
-  // 棋子拖动（仅在 pen=null 移动模式 或 editing 时）
+  // 球吸附：返回球当前粘着的球员(脚下有球)，没有则 null
+  function ballToken(){var b=null;tokens.forEach(function(t){if(t.role==="ball")b=t;});return b;}
+  function holderOf(ball){
+    if(!ball)return null;
+    var best=null,bd=8;
+    tokens.forEach(function(t){
+      if(t.role==="ball")return;
+      var d=Math.hypot(t.x-ball.x,t.y-ball.y);
+      if(d<bd){bd=d;best=t;}
+    });
+    return best;
+  }
+  function syncBallToHolder(){ // 把球贴到持球人脚下(略偏下)
+    var b=ballToken(); if(!b)return;
+    var h=holderOf(b); if(h){b.x=h.x;b.y=Math.min(97,h.y+3);}
+  }
+
+  // 拖动产生线：拖球员→跑动(脚下有球则带球波浪);拖球→传球
   function drag(el,t){
     el.addEventListener("pointerdown",function(e){
-      if(pen)return; // 画笔模式下棋子不拦截，让画线接管
-      if(editing){ // 编辑模式: 点×删除由下面处理, 这里允许拖动重新布置
-      }
+      if(editing){ /* 编辑模式仅用于点×删除，下面拖动照常允许重新布置 */ }
       e.preventDefault(); e.stopPropagation();
       try{el.setPointerCapture(e.pointerId);}catch(_){}
       el.classList.add("drag");
       var r=board.getBoundingClientRect();
+      function P(ev){return {x:Math.max(2,Math.min(98,(ev.clientX-r.left)/r.width*100)),y:Math.max(2,Math.min(98,(ev.clientY-r.top)/r.height*100))};}
+      var start=P(e);
+      // 判定这一拖是什么线
+      var ball=ballToken();
+      var dragHasBall = (t.role!=="ball") && ball && Math.hypot(t.x-ball.x,t.y-ball.y)<8; // 球员脚下有球
+      var lineType = t.role==="ball" ? "pass" : (dragHasBall ? "dribble" : "run");
+      // 编辑模式不画线，只挪位置
+      var doDraw = !editing;
+      drawing = doDraw ? {type:lineType, points:[start]} : null;
       function move(ev){
-        var nx=(ev.clientX-r.left)/r.width*100, ny=(ev.clientY-r.top)/r.height*100;
-        t.x=Math.max(3,Math.min(97,nx)); t.y=Math.max(3,Math.min(97,ny));
-        el.style.left=t.x+"%"; el.style.top=t.y+"%"; drawTrails();
+        var p=P(ev);
+        t.x=p.x; t.y=p.y; el.style.left=t.x+"%"; el.style.top=t.y+"%";
+        if(dragHasBall&&t.role!=="ball"){ // 带球：球跟着脚走
+          if(ball){ball.x=t.x;ball.y=Math.min(98,t.y);var be=board.querySelector('.tok.ball');if(be){be.style.left=ball.x+"%";be.style.top=ball.y+"%";}}
+        }
+        if(drawing){
+          var last=drawing.points[drawing.points.length-1];
+          if(Math.hypot(p.x-last.x,p.y-last.y)>1.2)drawing.points.push(p);
+        }
+        drawTrails();
       }
-      function up(){el.classList.remove("drag");try{el.releasePointerCapture(e.pointerId);}catch(_){}
-        el.removeEventListener("pointermove",move);el.removeEventListener("pointerup",up);el.removeEventListener("pointercancel",up);}
+      function up(){
+        el.classList.remove("drag");try{el.releasePointerCapture(e.pointerId);}catch(_){}
+        el.removeEventListener("pointermove",move);el.removeEventListener("pointerup",up);el.removeEventListener("pointercancel",up);
+        // 传球后：球吸附到最近球员；带球后：球继续贴着拖动者
+        if(t.role==="ball"){ syncBallToHolder(); }
+        // 成笔（移动超过阈值才算一笔）
+        if(drawing&&drawing.points.length>=2){
+          var first=drawing.points[0],lastp=drawing.points[drawing.points.length-1];
+          if(Math.hypot(lastp.x-first.x,lastp.y-first.y)>=3)strokes.push(drawing);
+        }
+        drawing=null; render(); if(onChange)onChange();
+      }
       el.addEventListener("pointermove",move);el.addEventListener("pointerup",up);el.addEventListener("pointercancel",up);
     });
     el.querySelector(".x").addEventListener("click",function(e){
       e.stopPropagation(); tokens=tokens.filter(function(z){return z.id!==t.id;}); render();
     });
   }
-
-  // 画线（pen 非空时，在 board 空白处描线）
-  board.addEventListener("pointerdown",function(e){
-    if(!pen)return;
-    if(e.target.closest(".tok"))return; // 点在棋子上不画(留给极端情况)
-    e.preventDefault();
-    try{board.setPointerCapture(e.pointerId);}catch(_){}
-    var r=board.getBoundingClientRect();
-    function P(ev){return {x:Math.max(1,Math.min(99,(ev.clientX-r.left)/r.width*100)),y:Math.max(1,Math.min(99,(ev.clientY-r.top)/r.height*100))};}
-    drawing={type:pen,points:[P(e)]};
-    function move(ev){
-      var p=P(ev), last=drawing.points[drawing.points.length-1];
-      if(Math.hypot(p.x-last.x,p.y-last.y)>1.2){drawing.points.push(p);drawTrails();}
-    }
-    function up(){
-      try{board.releasePointerCapture(e.pointerId);}catch(_){}
-      board.removeEventListener("pointermove",move);board.removeEventListener("pointerup",up);board.removeEventListener("pointercancel",up);
-      if(drawing&&drawing.points.length>=2){strokes.push(drawing);}
-      drawing=null; drawTrails(); if(onChange)onChange();
-    }
-    board.addEventListener("pointermove",move);board.addEventListener("pointerup",up);board.addEventListener("pointercancel",up);
-  });
 
   return {
     el:board,
@@ -697,15 +698,13 @@ function Pitch(boardId,trailId){
     edit:function(b){editing=b;board.classList.toggle("editing",b);},
     editing:function(){return editing;},
     render:render, draw:drawTrails,
-    // --- 画笔/解法 API ---
-    setPen:function(type){pen=type;board.classList.toggle("drawing",!!type);},
-    getPen:function(){return pen;},
+    // --- 解法 API ---
     strokeCount:function(){return strokes.length;},
-    undoStroke:function(){strokes.pop();drawTrails();if(onChange)onChange();},
-    commitSolution:function(){ if(!strokes.length)return false; solutions.push({steps:strokes,ts:Date.now()}); strokes=[]; drawing=null; drawTrails(); if(onChange)onChange(); return true; },
+    undoStroke:function(){strokes.pop();render();if(onChange)onChange();},
+    commitSolution:function(){ if(!strokes.length)return false; solutions.push({steps:strokes,ts:Date.now()}); strokes=[]; drawing=null; render(); if(onChange)onChange(); return true; },
     solutionCount:function(){return solutions.length;},
     solutions:function(){return solutions;},
-    clearAll:function(){strokes=[];solutions=[];drawing=null;drawTrails();if(onChange)onChange();},
+    clearAll:function(){strokes=[];solutions=[];drawing=null;render();if(onChange)onChange();},
     onChange:function(fn){onChange=fn;}
   };
 }
@@ -752,17 +751,8 @@ function loadScenario(id,save){
   barStyle.textContent="#scnCard:before{background:"+col+"!important}";
   mainPitch.set(s.tokens);
   state.activeTwist=null;
-  mainPitch.setPen(null); setPenUI("");
   renderTwists(); updateOptUI();
   if(save)store.setJSON(K.current,id);
-}
-function setPenUI(pen){
-  document.querySelectorAll("#pens .pen").forEach(function(b){b.classList.toggle("on",b.dataset.pen===pen);});
-  var hints={run:"🏃 跑动笔：画一名球员不带球的移动（实线）。",
-    pass:"⚽ 传球笔：画球传给谁（虚线）。",
-    dribble:"⚡ 带球笔：画带着球往前走，可以画 S 形过人（波浪线）。",
-    "":"选一支笔，用手指在场上画出路线——一步步把这球打进去。"};
-  $("#penHint").textContent=hints[pen||""];
 }
 function renderTwists(){
   var box=$("#twChips"), tw=(state.current.twists&&state.current.twists.length)?state.current.twists:DEF_TWISTS;
@@ -792,8 +782,8 @@ function updateOptUI(){
   var nu=$("#onudge");
   if(sols===0){
     nu.textContent = strokes===0
-      ? "用画笔一步步画：传球、跑位、带球…把这球打进去，再点「这套打进了」。"
-      : "已经画了 "+strokes+" 笔。打进了就点「这套打进了」存下来。";
+      ? "拖球员＝跑动，脚下带球拖＝带球，把球拖给队友＝传球。一步步打进，再点「这套打进了」。"
+      : "已经走了 "+strokes+" 步。打进了就点「这套打进了」存下来。";
   }else if(sols===1){
     nu.textContent = "第1套有了！换个完全不同的踢法，再打进一次——越不一样越好。";
   }else if(sols===2){
@@ -825,14 +815,6 @@ function bind(){
   $("#editBtn").addEventListener("click",function(){var e=!mainPitch.editing();mainPitch.edit(e);this.classList.toggle("on",e);});
   addMenuWire("#addWrap","#addMenu",function(role){mainPitch.add(role);});
 
-  // 画笔切换
-  document.querySelectorAll("#pens .pen").forEach(function(b){
-    b.addEventListener("click",function(){
-      var pen=this.dataset.pen||null;
-      mainPitch.setPen(pen); setPenUI(pen||"");
-      if(pen)mainPitch.edit(false),$("#editBtn").classList.remove("on");
-    });
-  });
   // 撤销一笔
   $("#undoBtn").addEventListener("click",function(){
     if(mainPitch.strokeCount()===0){toast("当前这套还没画呢");return;}
@@ -840,13 +822,12 @@ function bind(){
   });
   // 这套打进了 → 存为一种解法
   $("#goalBtn").addEventListener("click",function(){
-    if(mainPitch.strokeCount()===0){toast("先用画笔画出这套怎么打进去");return;}
+    if(mainPitch.strokeCount()===0){toast("先拖球员/球，把这套怎么打进去摆出来");return;}
     mainPitch.commitSolution();
-    mainPitch.setPen(null); setPenUI("");
     toast("第 "+mainPitch.solutionCount()+" 套解法存下了 ⚽");
   });
   // 复位重画（清当前这套未存的笔）
-  $("#optClear").addEventListener("click",function(){mainPitch.reset();mainPitch.setPen(null);setPenUI("");});
+  $("#optClear").addEventListener("click",function(){mainPitch.reset();});
   // 笔数/解法数变化 → 刷新提示
   mainPitch.onChange(updateOptUI);
 
@@ -943,7 +924,7 @@ function saveSession(){
   store.setJSON(K.sessions,state.sessions); store.setJSON(K.progress,p);
   paintStreak(); renderHistory();
   $("#kidAns").value="";$("#dadNote").value="";state.draftStars=0;paintStars("#stars",0);
-  mainPitch.clearAll();state.activeTwist=null;mainPitch.setPen(null);setPenUI("");updateOptUI();
+  mainPitch.clearAll();state.activeTwist=null;updateOptUI();
   toast("已记录 ✓ 连续 "+p.streak+" 天 · 累计 "+p.count+" 次");
 }
 function renderHistory(){
