@@ -1,0 +1,806 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="乔飞战术板">
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect fill='%231D1A15' width='180' height='180'/><text x='90' y='130' font-size='100' text-anchor='middle' fill='%23FFC93C' font-family='Arial,sans-serif' font-weight='bold'>★</text></svg>">
+<title>乔飞的战术板 v1.1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#14110E; --panel:#1D1A15; --panel-2:#252118; --line:#332E25;
+    --ink:#F5EFE2; --mut2:#A89F8F;
+    --grass:#103A2E; --grass-2:#0C2E25; --grass-line:#ffffff33;
+    --me:#FFC93C; --team:#3B82F6; --opp:#EF4444; --ball:#FCFBF7;
+    --bronze:#C07A3E; --silver:#C7CDD6; --gold:#FFC93C; --king:#B06CF0;
+    --r:14px; font-synthesis:none;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0}
+  body{background:radial-gradient(120% 60% at 50% -10%,#241f17 0%,transparent 60%),var(--bg);
+    color:var(--ink);font-family:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;
+    -webkit-font-smoothing:antialiased;min-height:100vh}
+  .wrap{max-width:540px;margin:0 auto;padding:14px 14px 44px}
+  .disp{font-family:"Oswald","Arial Narrow",system-ui,sans-serif;font-weight:700;letter-spacing:.3px}
+
+  header{display:flex;align-items:center;gap:10px;margin:4px 2px 14px}
+  .brand{flex:1;min-width:0}
+  .brand h1{font-size:22px;margin:0;line-height:1;letter-spacing:.5px}
+  .brand h1 b{color:var(--me)}
+  .brand .sub{font-size:11px;color:var(--mut2);margin-top:4px;letter-spacing:.6px;text-transform:uppercase}
+  .rankchip{position:relative;display:flex;align-items:center;gap:7px;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:7px 12px 7px 11px}
+  .rankdot{width:11px;height:11px;border-radius:50%;box-shadow:0 0 0 3px #ffffff14}
+  .rankchip select{appearance:none;background:transparent;border:0;color:var(--ink);font:inherit;font-family:"Oswald",sans-serif;font-weight:600;letter-spacing:.5px;font-size:14px;padding-right:14px;outline:none}
+  .rankchip .car{position:absolute;right:9px;color:var(--mut2);pointer-events:none;font-size:9px}
+  .streak{display:flex;align-items:center;gap:5px;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:7px 11px;font-family:"Oswald",sans-serif;font-weight:600;font-size:14px;white-space:nowrap}
+
+  .tabs{display:flex;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:4px;margin-bottom:14px}
+  .tabs button{flex:1;background:transparent;border:0;color:var(--mut2);font:inherit;font-weight:600;font-size:13px;padding:9px 0;border-radius:9px;cursor:pointer;transition:.15s;font-family:"Oswald",sans-serif;letter-spacing:.3px}
+  .tabs button.on{background:linear-gradient(180deg,#3a3328,#2c271d);color:var(--ink);box-shadow:inset 0 0 0 1px #ffffff12}
+  .view{display:none}.view.on{display:block}
+
+  .scn{background:linear-gradient(180deg,var(--panel-2),var(--panel));border:1px solid var(--line);border-radius:var(--r);padding:14px 15px;margin-bottom:10px;position:relative;overflow:hidden}
+  #scnCard:before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--bronze)}
+  .scn .tag{display:inline-flex;align-items:center;gap:6px;font-family:"Oswald",sans-serif;font-weight:600;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#1a160f;background:var(--bronze);padding:3px 9px;border-radius:6px}
+  .scn h2{font-family:"Oswald",sans-serif;font-weight:700;font-size:20px;margin:9px 0 0;letter-spacing:.3px}
+  .scn .sit{font-size:13.5px;line-height:1.5;color:var(--mut2);margin-top:7px}
+  .scn .q{font-size:14.5px;line-height:1.5;margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);display:flex;gap:8px}
+  .scn .q .qm{color:var(--me);font-weight:800;flex:none}
+
+  /* twist chips */
+  .twrap{margin-bottom:10px}
+  .twtoggle{background:var(--panel);border:1px dashed var(--line);color:var(--mut2);font:inherit;font-size:12.5px;padding:9px 12px;border-radius:10px;cursor:pointer;width:100%;text-align:left;display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .twtoggle .ic{color:var(--me)}
+  .twtoggle.on{border-style:solid;background:#241d10;border-color:#5a4a24;color:var(--me)}
+  .twbox{display:none}
+  .twbox.on{display:block}
+  .twlbl{font-size:11px;letter-spacing:.8px;text-transform:uppercase;color:#7c7464;font-family:"Oswald",sans-serif;font-weight:600;margin:2px 2px 7px}
+  .tw{display:flex;gap:7px;flex-wrap:wrap}
+  .twist{background:var(--panel);border:1px solid var(--line);color:var(--mut2);font:inherit;font-size:12.5px;padding:7px 11px;border-radius:999px;cursor:pointer;transition:.12s}
+  .twist:hover{border-color:#52483680}
+  .twist.on{background:#2c2418;border-color:var(--me);color:var(--me)}
+  .twbanner{display:none;margin-top:9px;background:#241d10;border:1px solid #5a4a24;border-radius:11px;padding:10px 12px;font-size:13.5px;line-height:1.45}
+  .twbanner.on{display:block}
+  .twbanner b{color:var(--me)}
+
+  .board{position:relative;width:100%;aspect-ratio:3/4;border-radius:var(--r);overflow:hidden;border:1px solid #ffffff14;touch-action:none;user-select:none;-webkit-user-select:none;background:repeating-linear-gradient(0deg,var(--grass) 0 9.09%,var(--grass-2) 9.09% 18.18%);box-shadow:0 10px 30px #00000055,inset 0 0 80px #00000040}
+  .markings,.trails{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+  .tok{position:absolute;width:42px;height:42px;margin:-21px 0 0 -21px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:"Oswald",sans-serif;font-weight:700;font-size:13px;color:#10100c;cursor:grab;touch-action:none;box-shadow:0 4px 10px #00000066,inset 0 1px 0 #ffffff66;transition:transform .08s}
+  .tok:active{cursor:grabbing}.tok.drag{transform:scale(1.12);z-index:9}
+  .tok.me{background:radial-gradient(circle at 35% 30%,#ffe79a,var(--me));color:#241a00;box-shadow:0 0 0 3px #ffc93c44,0 5px 14px #00000077}
+  .tok.team{background:radial-gradient(circle at 35% 30%,#8fc0ff,var(--team));color:#06224d}
+  .tok.opp{background:radial-gradient(circle at 35% 30%,#ffa3a3,var(--opp));color:#430a0a}
+  .tok.ball{width:26px;height:26px;margin:-13px 0 0 -13px;background:var(--ball);font-size:14px;color:#222}
+  .tok .x{position:absolute;top:-7px;right:-7px;width:18px;height:18px;border-radius:50%;background:#1b1813;color:#ff8a8a;border:1px solid #ff8a8a55;display:none;align-items:center;justify-content:center;font-size:11px;font-family:Inter}
+  .board.editing .tok .x{display:flex}
+
+  .bctrl{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+  .btn{flex:1;min-width:0;background:var(--panel);border:1px solid var(--line);color:var(--ink);font:inherit;font-weight:600;font-size:13px;padding:11px 8px;border-radius:11px;cursor:pointer;white-space:nowrap;transition:.15s}
+  .btn:hover{border-color:#52483680}.btn.on{background:#2c271d;border-color:#6a5d40}
+  .addmenu{position:absolute;bottom:calc(100% + 6px);left:0;right:0;background:var(--panel-2);border:1px solid var(--line);border-radius:11px;padding:5px;display:none;z-index:20}
+  .addmenu.on{display:block}
+  .addmenu button{display:block;width:100%;text-align:left;background:transparent;border:0;color:var(--ink);font:inherit;font-size:13px;padding:9px 10px;border-radius:8px;cursor:pointer}
+  .addmenu button:hover{background:#332e25}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;margin:10px 2px 2px;font-size:11.5px;color:var(--mut2)}
+  .legend span{display:inline-flex;align-items:center;gap:5px}
+  .lg{width:11px;height:11px;border-radius:50%}
+
+  /* 攒招 strip */
+  .opts{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:12px 13px;margin-top:12px}
+  .opts .oth{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+  .opts .oth .t{font-family:"Oswald",sans-serif;font-weight:600;font-size:14px;letter-spacing:.4px;flex:1}
+  .opts .oth .c{font-family:"Oswald",sans-serif;font-weight:700;font-size:14px;color:var(--me)}
+  .ochips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;min-height:4px}
+  .ochip{width:26px;height:26px;border-radius:50%;background:#2c2418;border:1px solid #6a5d40;color:var(--me);display:flex;align-items:center;justify-content:center;font-family:"Oswald",sans-serif;font-weight:700;font-size:12px}
+  .orow{display:flex;gap:8px}
+  .oadd{flex:2;background:linear-gradient(180deg,#3a3328,#2c271d);border:1px solid #6a5d40;color:var(--ink);font:inherit;font-weight:600;font-size:13.5px;padding:11px;border-radius:11px;cursor:pointer}
+  .oclear{flex:1;background:transparent;border:1px solid var(--line);color:var(--mut2);font:inherit;font-size:13px;padding:11px;border-radius:11px;cursor:pointer}
+  .onudge{font-size:12.5px;color:var(--me);margin-top:9px;text-align:center;min-height:1px;opacity:.9}
+
+  .rec{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-top:12px}
+  .lbl{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--mut2);font-family:"Oswald",sans-serif;font-weight:600;margin-bottom:7px}
+  textarea,input[type=text]{width:100%;background:#14120E;border:1px solid var(--line);border-radius:10px;color:var(--ink);font:inherit;font-size:14px;padding:11px;resize:vertical;outline:none}
+  textarea:focus,input:focus{border-color:#6a5d40}
+  textarea{min-height:60px;line-height:1.5}
+  .divp{height:1px;background:var(--line);margin:14px 0}
+  .parent{font-size:11px;letter-spacing:.5px;color:#7c7464;text-transform:uppercase;font-family:"Oswald",sans-serif;font-weight:600;display:flex;align-items:center;gap:7px;margin-bottom:10px}
+  .parent:before,.parent:after{content:"";flex:1;height:1px;background:var(--line)}
+  .stars{display:flex;gap:6px;margin-bottom:12px}
+  .star{font-size:26px;color:#3c372c;cursor:pointer;line-height:1;transition:.1s}
+  .star.lit{color:var(--me);text-shadow:0 0 10px #ffc93c55}
+  .save{width:100%;background:linear-gradient(180deg,#ffd866,#f6b820);color:#241a00;border:0;font-family:"Oswald",sans-serif;font-weight:700;font-size:16px;letter-spacing:1px;padding:14px;border-radius:12px;cursor:pointer;text-transform:uppercase;box-shadow:0 6px 16px #f6b82033}
+  .save:active{transform:translateY(1px)}
+  .save.alt{background:linear-gradient(180deg,#7aa2ff,#3B82F6);color:#06224d;box-shadow:0 6px 16px #3b82f633}
+  .hint{font-size:11.5px;color:var(--mut2);margin-top:9px;line-height:1.5;text-align:center}
+
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:13px 10px;text-align:center}
+  .stat .n{font-family:"Oswald",sans-serif;font-weight:700;font-size:26px;line-height:1;color:var(--me)}
+  .stat .k{font-size:10.5px;color:var(--mut2);margin-top:5px;letter-spacing:.5px}
+  .hcard{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 13px;margin-bottom:9px}
+  .hcard .top{display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap}
+  .hcard .d{font-family:"Oswald",sans-serif;font-weight:600;font-size:13px;color:var(--mut2)}
+  .hcard .t{font-weight:600;font-size:14px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .hcard .ss{color:var(--me);font-size:12px;letter-spacing:1px;flex:none}
+  .badge{font-family:"Oswald",sans-serif;font-size:10.5px;font-weight:600;letter-spacing:.5px;color:#cdeecd;background:#1e3320;border:1px solid #36563a;padding:2px 7px;border-radius:6px;flex:none}
+  .hcard .ans{font-size:13px;line-height:1.45;margin-top:4px}
+  .hcard .ans b{color:var(--mut2);font-weight:600}
+  .hcard .note{font-size:12.5px;line-height:1.45;color:var(--mut2);margin-top:5px;padding-top:6px;border-top:1px dashed var(--line)}
+  .empty{text-align:center;color:var(--mut2);font-size:13.5px;line-height:1.6;padding:34px 18px;border:1px dashed var(--line);border-radius:14px}
+  .empty b{color:var(--ink)}
+
+  .scnrow{display:flex;align-items:center;gap:11px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:11px 12px;margin-bottom:9px}
+  .scnrow.cur{border-color:#6a5d40;background:#221e16}
+  .pill{font-family:"Oswald",sans-serif;font-weight:600;font-size:10px;letter-spacing:.8px;text-transform:uppercase;padding:3px 8px;border-radius:6px;color:#10100c;flex:none}
+  .scnrow .nm{flex:1;min-width:0}
+  .scnrow .nm .tt{font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .scnrow .nm .cur-tag{font-size:10.5px;color:var(--me);letter-spacing:.5px;margin-top:2px}
+  .scnrow .use{background:#2c271d;border:1px solid #52483680;color:var(--ink);font:inherit;font-size:12px;font-weight:600;padding:8px 12px;border-radius:9px;cursor:pointer;flex:none}
+  .newbtn{width:100%;background:transparent;border:1px dashed #52483688;color:var(--mut2);font:inherit;font-weight:600;font-size:14px;padding:13px;border-radius:12px;cursor:pointer;margin-top:4px}
+  .form{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;margin-top:10px;display:none}
+  .form.on{display:block}
+  .form .row{margin-bottom:11px}
+  .form select{width:100%;appearance:none;background:#14120E;border:1px solid var(--line);border-radius:10px;color:var(--ink);font:inherit;font-size:14px;padding:11px;outline:none}
+
+  /* challenge */
+  .chintro{background:linear-gradient(180deg,#2a2030,#211a26);border:1px solid #4a3a59;border-radius:var(--r);padding:13px 14px;margin-bottom:12px}
+  .chintro .h{font-family:"Oswald",sans-serif;font-weight:700;font-size:17px;color:#d9b9ff}
+  .chintro .p{font-size:12.5px;line-height:1.5;color:#b6a8c4;margin-top:5px}
+  .chstats{display:flex;gap:8px;margin-top:11px}
+  .chstat{flex:1;background:#1a1520;border:1px solid #3d3049;border-radius:10px;padding:9px;text-align:center}
+  .chstat .n{font-family:"Oswald",sans-serif;font-weight:700;font-size:20px;color:#d9b9ff}
+  .chstat .k{font-size:10px;color:#9384a3;margin-top:3px}
+  .stagehd{display:flex;align-items:center;gap:8px;margin:4px 2px 9px}
+  .stagehd .t{font-family:"Oswald",sans-serif;font-weight:700;font-size:15px;flex:1}
+  .qask{background:#241d10;border:1px solid #5a4a24;border-radius:11px;padding:11px 12px;font-size:13.5px;line-height:1.45;margin-bottom:10px;display:none}
+  .qask.on{display:block}.qask b{color:var(--me)}
+  .drate{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-top:12px;display:none}
+  .drate.on{display:block}
+  .verdict{display:flex;gap:8px;margin-top:11px}
+  .vbtn{flex:1;background:#14120E;border:1px solid var(--line);color:var(--mut2);font:inherit;font-weight:600;font-size:14px;padding:12px;border-radius:11px;cursor:pointer}
+  .vbtn.pass.on{background:#173a1e;border-color:#3a7d49;color:#aef0b8}
+  .vbtn.fail.on{background:#3a1717;border-color:#7d3a3a;color:#f0aeae}
+  .warcard{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:11px 12px;margin-bottom:9px}
+  .warcard .wq{flex:1;min-width:0}
+  .warcard .wq .qq{font-size:13.5px;line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+  .warcard .wq .wd{font-size:10.5px;color:var(--mut2);margin-top:3px;font-family:"Oswald",sans-serif}
+  .warcard .st{font-size:11px;text-align:right;flex:none}
+  .warcard .st .ans{background:#2c271d;border:1px solid #6a5d40;color:var(--ink);font:inherit;font-size:12px;font-weight:600;padding:8px 10px;border-radius:9px;cursor:pointer}
+  .warcard .st .done{color:var(--me);font-family:"Oswald",sans-serif;font-weight:600;font-size:12px}
+
+  .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);background:#2c271d;border:1px solid #6a5d40;color:var(--ink);padding:12px 18px;border-radius:12px;font-size:14px;font-weight:600;box-shadow:0 10px 30px #000a;opacity:0;pointer-events:none;transition:.25s;z-index:99;text-align:center;max-width:80%}
+  .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+  :focus-visible{outline:2px solid var(--me);outline-offset:2px}
+  @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <h1 class="disp">乔飞的<b>战术板</b></h1>
+      <div class="sub">每天一场景 · 自己摆 · 攒进度</div>
+    </div>
+    <div class="rankchip">
+      <span class="rankdot" id="rankdot"></span>
+      <select id="rankSel" aria-label="当前段位">
+        <option value="青铜">青铜</option><option value="白银">白银</option>
+        <option value="黄金">黄金</option><option value="王者">王者</option>
+      </select>
+      <span class="car">▼</span>
+    </div>
+    <div class="streak">🔥 <span id="streakN">0</span></div>
+  </header>
+
+  <div class="tabs">
+    <button data-v="today" class="on disp">今日</button>
+    <button data-v="hist" class="disp">历史</button>
+    <button data-v="lib" class="disp">场景库</button>
+    <button data-v="ch" class="disp">⚔️ 挑战</button>
+  </div>
+
+  <!-- TODAY -->
+  <section class="view on" id="v-today">
+    <div class="scn" id="scnCard">
+      <span class="tag" id="scnTag">青铜</span>
+      <h2 id="scnTitle">—</h2>
+      <div class="sit" id="scnSit">—</div>
+      <div class="q"><span class="qm">?</span><span id="scnQ">—</span></div>
+    </div>
+
+    <div class="twrap" id="twrap">
+      <button class="twtoggle" id="twToggle"><span class="ic">💡</span><span id="twToggleText">想要提示？看看几种"如果…"的情况</span></button>
+      <div class="twbox" id="twBox">
+        <div class="twlbl">想想这些变招 · 每换一种就再摆一次</div>
+        <div class="tw" id="twChips"></div>
+        <div class="twbanner" id="twBanner"></div>
+      </div>
+    </div>
+
+    <div class="board" id="board">
+      <svg class="markings" viewBox="0 0 100 133" preserveAspectRatio="none">
+        <g fill="none" stroke="var(--grass-line)" stroke-width="0.5">
+          <rect x="2" y="2" width="96" height="129"/><line x1="2" y1="66.5" x2="98" y2="66.5"/>
+          <circle cx="50" cy="66.5" r="13"/><circle cx="50" cy="66.5" r="0.8" fill="var(--grass-line)" stroke="none"/>
+          <rect x="22" y="2" width="56" height="20"/><rect x="36" y="2" width="28" height="9"/>
+          <path d="M34 22 A18 18 0 0 0 66 22"/>
+          <rect x="22" y="111" width="56" height="20"/><rect x="36" y="122" width="28" height="9"/>
+          <path d="M34 111 A18 18 0 0 1 66 111"/>
+        </g>
+      </svg>
+      <svg class="trails" id="trails"><defs>
+        <marker id="ar-me" markerWidth="7" markerHeight="7" refX="5.5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--me)"/></marker>
+        <marker id="ar-team" markerWidth="7" markerHeight="7" refX="5.5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--team)"/></marker>
+        <marker id="ar-opp" markerWidth="7" markerHeight="7" refX="5.5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--opp)"/></marker>
+      </defs></svg>
+    </div>
+
+    <div class="legend">
+      <span><i class="lg" style="background:var(--me)"></i>你</span>
+      <span><i class="lg" style="background:var(--team)"></i>队友</span>
+      <span><i class="lg" style="background:var(--opp)"></i>对手</span>
+      <span><i class="lg" style="background:var(--ball)"></i>球</span>
+      <span style="color:#6f6757">↑ 进攻方向</span>
+    </div>
+
+    <div class="bctrl">
+      <button class="btn" id="resetBtn">↺ 复位</button>
+      <div class="btn" id="addWrap" style="position:relative">＋ 球员
+        <div class="addmenu" id="addMenu">
+          <button data-r="team">＋ 我方球员</button><button data-r="opp">＋ 对方球员</button><button data-r="ball">＋ 球</button>
+        </div>
+      </div>
+      <button class="btn" id="editBtn">✎ 删人</button>
+    </div>
+
+    <div class="opts">
+      <div class="oth"><span class="t">他想到的招</span><span class="c" id="optCount">0 种</span></div>
+      <div class="ochips" id="ochips"></div>
+      <div class="orow">
+        <button class="oadd" id="optAdd">记下这一招 ＋</button>
+        <button class="oclear" id="optClear">清空</button>
+      </div>
+      <div class="onudge" id="onudge"></div>
+    </div>
+
+    <div class="rec">
+      <div class="lbl">他的答案 / 他怎么说</div>
+      <textarea id="kidAns" placeholder="他为什么这么摆？哪招最好？让他自己说，你打几个字记下来。"></textarea>
+      <div class="divp"></div>
+      <div class="parent">家长记录</div>
+      <div class="lbl">今天这一下，想得怎么样</div>
+      <div class="stars" id="stars">
+        <span class="star" data-s="1">★</span><span class="star" data-s="2">★</span>
+        <span class="star" data-s="3">★</span><span class="star" data-s="4">★</span><span class="star" data-s="5">★</span>
+      </div>
+      <input type="text" id="dadNote" placeholder="一句话备注：状态 / 亮点 / 异常（可留空）">
+      <div style="height:14px"></div>
+      <button class="save" id="saveBtn">保存今日</button>
+      <div class="hint">保存后进「历史」，每天一条，攒着就看出变化了。</div>
+    </div>
+  </section>
+
+  <!-- HISTORY -->
+  <section class="view" id="v-hist">
+    <div class="stats">
+      <div class="stat"><div class="n" id="stTotal">0</div><div class="k">累计天数</div></div>
+      <div class="stat"><div class="n" id="stStreak">0</div><div class="k">连续天数</div></div>
+      <div class="stat"><div class="n" id="stStars">0</div><div class="k">累计星星</div></div>
+    </div>
+    <div id="histList"></div>
+  </section>
+
+  <!-- LIBRARY -->
+  <section class="view" id="v-lib">
+    <div id="scnList"></div>
+    <button class="newbtn" id="newBtn">＋ 新建场景（把今天我给你的填进来）</button>
+    <div class="form" id="newForm">
+      <div class="row"><div class="lbl">段位</div>
+        <select id="nfRank"><option>青铜</option><option>白银</option><option>黄金</option><option>王者</option></select></div>
+      <div class="row"><div class="lbl">标题</div><input type="text" id="nfTitle" placeholder="例：传完之后那一下"></div>
+      <div class="row"><div class="lbl">情境（定格画面）</div><textarea id="nfSit" placeholder="例：你在右边路把球传给中路队友，球刚出脚。"></textarea></div>
+      <div class="row"><div class="lbl">问题</div><textarea id="nfQ" placeholder="例：传完这一下，除了站着，你还能去哪？"></textarea></div>
+      <button class="save" id="nfSave">建好并设为今日</button>
+    </div>
+  </section>
+
+  <!-- CHALLENGE -->
+  <section class="view" id="v-ch">
+    <div class="chintro">
+      <div class="h">⚔️ 你来出题，考考爸爸</div>
+      <div class="p">摆一个你觉得难的球，写下问题，下战书。看爸爸怎么处理——然后<b style="color:#d9b9ff">你给爸爸打分</b>。</div>
+      <div class="chstats">
+        <div class="chstat"><div class="n" id="chMade">0</div><div class="k">你出的题</div></div>
+        <div class="chstat"><div class="n" id="chPass">0</div><div class="k">爸爸过关</div></div>
+        <div class="chstat"><div class="n" id="chFail">0</div><div class="k">爸爸翻车</div></div>
+      </div>
+    </div>
+
+    <div class="stagehd"><span class="t" id="stageT">出题给爸爸</span>
+      <button class="btn" id="chReset" style="flex:none;width:auto;padding:8px 12px">↺ 清空场上</button></div>
+
+    <div class="qask" id="qAsk"></div>
+
+    <div class="board" id="chBoard">
+      <svg class="markings" viewBox="0 0 100 133" preserveAspectRatio="none">
+        <g fill="none" stroke="var(--grass-line)" stroke-width="0.5">
+          <rect x="2" y="2" width="96" height="129"/><line x1="2" y1="66.5" x2="98" y2="66.5"/>
+          <circle cx="50" cy="66.5" r="13"/><circle cx="50" cy="66.5" r="0.8" fill="var(--grass-line)" stroke="none"/>
+          <rect x="22" y="2" width="56" height="20"/><rect x="36" y="2" width="28" height="9"/>
+          <path d="M34 22 A18 18 0 0 0 66 22"/>
+          <rect x="22" y="111" width="56" height="20"/><rect x="36" y="122" width="28" height="9"/>
+          <path d="M34 111 A18 18 0 0 1 66 111"/>
+        </g>
+      </svg>
+      <svg class="trails" id="chTrails"></svg>
+    </div>
+    <div class="legend">
+      <span><i class="lg" style="background:var(--me)"></i>你</span>
+      <span><i class="lg" style="background:var(--team)"></i>队友</span>
+      <span><i class="lg" style="background:var(--opp)"></i>对手</span>
+      <span><i class="lg" style="background:var(--ball)"></i>球</span>
+    </div>
+    <div class="bctrl">
+      <div class="btn" id="chAddWrap" style="position:relative">＋ 球员
+        <div class="addmenu" id="chAddMenu">
+          <button data-r="team">＋ 我方球员</button><button data-r="opp">＋ 对方球员</button><button data-r="ball">＋ 球</button>
+        </div>
+      </div>
+      <button class="btn" id="chEdit">✎ 删人</button>
+    </div>
+
+    <div class="rec" id="buildBox">
+      <div class="lbl">给爸爸的问题</div>
+      <textarea id="chQ" placeholder="例：爸爸，这球你怎么破？你会传哪、跑哪？"></textarea>
+      <div style="height:12px"></div>
+      <button class="save" id="chSend">下战书 ⚔️</button>
+      <div class="hint">出题的时候，你其实已经在想"什么样的球最难"——这就是动脑子。</div>
+    </div>
+
+    <div class="drate" id="dRate">
+      <div class="parent">乔飞给爸爸打分</div>
+      <div class="lbl">爸爸这一下，破得漂亮吗</div>
+      <div class="stars" id="dStars">
+        <span class="star" data-s="1">★</span><span class="star" data-s="2">★</span><span class="star" data-s="3">★</span>
+      </div>
+      <div class="verdict">
+        <button class="vbtn pass" id="vPass">✓ 过关</button>
+        <button class="vbtn fail" id="vFail">✗ 没答对</button>
+      </div>
+      <div style="height:14px"></div>
+      <button class="save alt" id="dSave">记下结果</button>
+    </div>
+
+    <div class="stagehd" style="margin-top:18px"><span class="t">战书记录</span></div>
+    <div id="warList"></div>
+  </section>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+/* ---------- storage ---------- */
+var mem={};
+var store={
+  async getJSON(k){
+    // 1) Claude Artifact 环境的 window.storage（在 Claude 里打开时用）
+    try{if(window.storage){var r=await window.storage.get(k);if(r&&r.value!=null)return JSON.parse(r.value);}}catch(e){}
+    // 2) 浏览器 localStorage —— iPad Safari 直接打开靠这层持久化，刷新/关页都不丢
+    try{var ls=localStorage.getItem(k);if(ls!=null)return JSON.parse(ls);}catch(e){}
+    // 3) 内存兜底（前两层都不可用时，至少本次会话内可用）
+    return (k in mem)?mem[k]:null;
+  },
+  async setJSON(k,v){
+    mem[k]=v;
+    var s=JSON.stringify(v);
+    // 双写：localStorage 做本地持久，window.storage 兼容 Claude 环境
+    try{localStorage.setItem(k,s);}catch(e){}
+    try{if(window.storage){await window.storage.set(k,s);}}catch(e){}
+  }
+};
+var K={custom:"lab_custom_scn",sessions:"lab_sessions",progress:"lab_progress",current:"lab_current",ch:"lab_challenges"};
+
+/* ---------- data ---------- */
+var RANKS={青铜:"--bronze",白银:"--silver",黄金:"--gold",王者:"--king"};
+function T(role,x,y){return {role:role,x:x,y:y};}
+var BUILTIN=[
+ /* 青铜 - 建立"传完要动"意识 */
+ {id:"b1",rank:"青铜",title:"传完之后那一下",
+  sit:"你在右边路把球传给了中路的队友，球刚出脚——这会儿你站着没动。",
+  q:"传完这一下，除了站着，你还能去哪？把你（金色）拖到你想去的位置，再说说为啥。",
+  twists:["对方中卫扑上来防你","你的队友被对手贴死了","比赛只剩3分钟，要进球","你左边其实也空着"],
+  tokens:[T("me",80,42),T("team",52,40),T("ball",52,43),T("opp",60,30),T("opp",44,28),T("opp",66,18)]},
+ {id:"b2",rank:"青铜",title:"X1 · 传完球之后的3秒",
+  sit:"你把球分给队友，接下来这3秒，是你最容易“站着看”的时候。",
+  q:"这3秒，聪明的跑法是哪种？拖出你的路线。再想想：哪条最难被对手料到？",
+  twists:["对方就赌你不会跑","你想跟队友玩2过1","对方全都缩回去了","这是快攻，要快"],
+  tokens:[T("me",65,44),T("team",45,42),T("ball",45,45),T("opp",55,30),T("opp",40,26),T("opp",72,24)]},
+ {id:"b3",rank:"青铜",title:"W2 · 球被倒回来了",
+  sit:"你（边锋）刚把球往里传，结果球被横敲、又往回倒了一拍。",
+  q:"球要回来了——你这会儿应该已经到哪了？把自己摆到该在的位置。",
+  twists:["对方上来抢这一拍","你这边的边后卫压上来了","中路被堵死了"],
+  tokens:[T("me",80,46),T("team",50,52),T("ball",50,55),T("team",30,56),T("opp",56,40),T("opp",70,38)]},
+ {id:"b4",rank:"青铜",title:"W1 · 边路1对1",
+  sit:"你在右边路拿球，正面1个边后卫，他身后是空当。",
+  q:"你打算怎么过他？往哪边？把你拖出第一步，说说为什么走这边。",
+  twists:["边后卫不上抢，只往后退","他身后还有人保护","你内切方向有人补防"],
+  tokens:[T("me",80,52),T("ball",80,55),T("opp",78,42),T("team",54,42),T("opp",60,28)]},
+ {id:"b5",rank:"青铜",title:"传完反插",
+  sit:"你传完球，队友往边路带，对方中卫跟着球移动，你身后空了。",
+  q:"队友回传那一下，你应该在哪？把你的路线拖出来——什么时候启动最合适？",
+  twists:["队友被断了","对方有人回追你","队友不回传直接打门"],
+  tokens:[T("me",70,44),T("team",50,50),T("ball",50,53),T("opp",50,36),T("opp",65,32)]},
+ {id:"b6",rank:"青铜",title:"队友丢球了",
+  sit:"队友带球突破，被断了，球在对方脚下，你离得最近。",
+  q:"上抢还是退防？如果上抢——从哪个角度？把你的第一步摆出来。",
+  twists:["对方马上传出去了","你身后没人保护","队友都还没回防"],
+  tokens:[T("me",60,50),T("opp",58,42),T("ball",58,45),T("team",70,55),T("opp",50,30)]},
+
+ /* 白银 - 建立"接球前看"意识 */
+ {id:"b7",rank:"白银",title:"X2 · 接球前先看",
+  sit:"球正往你脚下来，还有1秒到。这一下最关键的不是脚，是眼睛。",
+  q:"球到之前，你得先转头看哪两样？把对手摆到你“看到”的位置，说说你会怎么接。",
+  twists:["身后有人偷偷贴上来了","球速很快不好接","对方就想断你这一脚"],
+  tokens:[T("me",55,46),T("ball",40,56),T("opp",62,40),T("opp",50,30),T("team",34,36)]},
+ {id:"b8",rank:"白银",title:"弱侧偷袭",
+  sit:"球在另一边，队友带球往底线突。你在弱侧远端——大多数人这时候是站着看的。",
+  q:"你什么时候启动？跑到哪？把你的路线拖出来。再想想：早跑会怎样？晚跑会怎样？",
+  twists:["对方边后卫已经盯你了","传中传到了你这一侧","底线那个队友被断了"],
+  tokens:[T("me",20,30),T("team",80,28),T("ball",80,31),T("opp",75,20),T("opp",55,18),T("opp",45,22)]},
+ {id:"b9",rank:"白银",title:"接球前扫视",
+  sit:"队友准备传球给你，球还没出脚，你有2秒时间。",
+  q:"这2秒你的眼睛该看哪三样？（球的来路、身后对手、能传的队友）把对手摆到你“看到”的位置。",
+  twists:["你一拿球就要被上抢","球传得很高需要停","前面有空当可以直接带"],
+  tokens:[T("me",50,48),T("team",35,58),T("ball",35,61),T("opp",55,42),T("opp",48,34),T("team",68,40)]},
+ {id:"b10",rank:"白银",title:"F3 · 中锋背身做墙",
+  sit:"你打中锋，背对球门拿球，一个中卫死死顶着你。队友把球给了你。",
+  q:"你把球做给插上的队友之后，紧接着往哪跑？别停在原地。摆出来。",
+  twists:["中卫不跟你，留在原地","两个中卫一起来夹你","边路队友套上来了"],
+  tokens:[T("me",50,30),T("ball",50,33),T("opp",50,23),T("team",38,46),T("team",62,47),T("opp",62,26)]},
+ {id:"b11",rank:"白银",title:"中锋抢点时机",
+  sit:"边路队友准备传中，你是中锋，禁区里你对2个中卫。",
+  q:"球还没传，你先在哪等？球一出脚，你往哪抢？把两步都摆出来（等位+抢位）。",
+  twists:["传中是地滚球","传中偏后了","一个中卫跟你一个不跟"],
+  tokens:[T("me",50,26),T("team",82,40),T("ball",82,43),T("opp",46,20),T("opp",56,20)]},
+
+ /* 黄金 - 中锋综合 */
+ {id:"b12",rank:"黄金",title:"中锋背身护球",
+  sit:"你背身拿球，中卫顶着你，队友在身后接应位置。",
+  q:"护住球之后有三个选择：回敲/转身/分边。你选哪个？为什么？把路线摆出来。",
+  twists:["中卫一直不上抢","边路队友突然插上来了","对方又来一个人夹你"],
+  tokens:[T("me",50,32),T("ball",50,35),T("opp",50,25),T("team",45,48),T("team",72,42),T("team",28,44)]},
+ {id:"b13",rank:"黄金",title:"反击2打2",
+  sit:"反击机会！你和队友2打2，队友拿球带向前，你在他左边。",
+  q:"你怎么跑才能让两个中卫都难受？拖出你的路线。早要球还是晚要球？",
+  twists:["对方一个中卫上抢队友","对方两个中卫都退","你想玩撞墙","守门员出击了"],
+  tokens:[T("me",42,46),T("team",58,44),T("ball",58,47),T("opp",50,30),T("opp",60,26)]},
+ {id:"b14",rank:"黄金",title:"做墙后跑位",
+  sit:"你做完墙（回敲给队友），球刚出脚，中卫还在你身边。",
+  q:"接下来3秒你往哪跑？拖出路线。为什么这么跑最聪明？",
+  twists:["中卫死跟你不放","中卫被队友吸引走了","球被横传到另一边了"],
+  tokens:[T("me",50,34),T("team",48,50),T("ball",48,53),T("opp",52,28),T("opp",64,26),T("team",72,46)]}
+];
+var DEF_TWISTS=["对方多上来一个人","你的队友没接到","换到另一边会怎样"];
+
+/* ---------- shared Pitch controller ---------- */
+function Pitch(boardId,trailId){
+  var board=document.getElementById(boardId), trails=document.getElementById(trailId);
+  var tokens=[], editing=false, ghosts=[];
+  function clientWH(){return [board.clientWidth,board.clientHeight];}
+  function render(){
+    board.querySelectorAll(".tok").forEach(function(e){e.remove();});
+    tokens.forEach(function(t){
+      var el=document.createElement("div");
+      el.className="tok "+t.role; el.style.left=t.x+"%"; el.style.top=t.y+"%"; el.dataset.id=t.id;
+      el.innerHTML = t.role==="me"?"★":t.role==="ball"?"⚽":"";
+      var x=document.createElement("div"); x.className="x"; x.textContent="×"; el.appendChild(x);
+      board.appendChild(el); drag(el,t);
+    });
+    drawTrails();
+  }
+  function drawTrails(){
+    var wh=clientWH(),W=wh[0],H=wh[1];
+    trails.setAttribute("viewBox","0 0 "+W+" "+H);
+    Array.prototype.slice.call(trails.children).forEach(function(c){if(c.tagName.toLowerCase()!=="defs")c.remove();});
+    ghosts.forEach(function(g){
+      var l=mk("line"); l.setAttribute("x1",g.x0/100*W);l.setAttribute("y1",g.y0/100*H);
+      l.setAttribute("x2",g.x/100*W);l.setAttribute("y2",g.y/100*H);
+      l.setAttribute("stroke","var(--me)");l.setAttribute("stroke-width","2");l.setAttribute("stroke-dasharray","3 5");
+      l.setAttribute("stroke-linecap","round");l.setAttribute("opacity","0.32");trails.appendChild(l);
+      var c=mk("circle");c.setAttribute("cx",g.x/100*W);c.setAttribute("cy",g.y/100*H);c.setAttribute("r","8");
+      c.setAttribute("fill","#2c2418");c.setAttribute("stroke","var(--me)");c.setAttribute("stroke-opacity","0.5");trails.appendChild(c);
+      var tx=mk("text");tx.setAttribute("x",g.x/100*W);tx.setAttribute("y",g.y/100*H+3.5);tx.setAttribute("text-anchor","middle");
+      tx.setAttribute("font-size","10");tx.setAttribute("font-family","Oswald,sans-serif");tx.setAttribute("fill","var(--me)");
+      tx.setAttribute("opacity","0.8");tx.textContent=g.n;trails.appendChild(tx);
+    });
+    tokens.forEach(function(t){
+      if(t.role==="ball")return;
+      if(Math.abs(t.x-t.x0)<1.5&&Math.abs(t.y-t.y0)<1.5)return;
+      var l=mk("line");l.setAttribute("x1",t.x0/100*W);l.setAttribute("y1",t.y0/100*H);
+      l.setAttribute("x2",t.x/100*W);l.setAttribute("y2",t.y/100*H);
+      var c=t.role==="me"?"var(--me)":t.role==="team"?"var(--team)":"var(--opp)";
+      l.setAttribute("stroke",c);l.setAttribute("stroke-width","2.5");l.setAttribute("stroke-dasharray","6 5");
+      l.setAttribute("stroke-linecap","round");l.setAttribute("opacity","0.9");l.setAttribute("marker-end","url(#ar-"+t.role+")");
+      trails.appendChild(l);
+    });
+  }
+  function mk(t){return document.createElementNS("http://www.w3.org/2000/svg",t);}
+  function drag(el,t){
+    el.addEventListener("pointerdown",function(e){
+      if(editing)return; e.preventDefault(); el.setPointerCapture(e.pointerId); el.classList.add("drag");
+      var r=board.getBoundingClientRect();
+      function move(ev){
+        var nx=(ev.clientX-r.left)/r.width*100, ny=(ev.clientY-r.top)/r.height*100;
+        t.x=Math.max(3,Math.min(97,nx)); t.y=Math.max(3,Math.min(97,ny));
+        el.style.left=t.x+"%"; el.style.top=t.y+"%"; drawTrails();
+      }
+      function up(){el.classList.remove("drag");try{el.releasePointerCapture(e.pointerId);}catch(_){}
+        el.removeEventListener("pointermove",move);el.removeEventListener("pointerup",up);el.removeEventListener("pointercancel",up);}
+      el.addEventListener("pointermove",move);el.addEventListener("pointerup",up);el.addEventListener("pointercancel",up);
+    });
+    el.querySelector(".x").addEventListener("click",function(e){
+      e.stopPropagation(); tokens=tokens.filter(function(z){return z.id!==t.id;}); render();
+    });
+  }
+  return {
+    el:board,
+    set:function(arr){tokens=arr.map(function(t,i){return {id:i+"_"+Math.random().toString(36).slice(2,6),role:t.role,x:t.x,y:t.y,x0:t.x0!=null?t.x0:t.x,y0:t.y0!=null?t.y0:t.y};});ghosts=[];render();},
+    tokens:function(){return tokens;},
+    add:function(role){tokens.push({id:"a"+Date.now(),role:role,x:50,y:role==="ball"?60:66,x0:50,y0:role==="ball"?60:66});render();},
+    reset:function(){tokens.forEach(function(t){t.x=t.x0;t.y=t.y0;});render();},
+    edit:function(b){editing=b;board.classList.toggle("editing",b);},
+    editing:function(){return editing;},
+    render:render, draw:drawTrails,
+    meRun:function(){var m=null;tokens.forEach(function(t){if(t.role==="me")m=t;});return m?{x0:m.x0,y0:m.y0,x:m.x,y:m.y}:null;},
+    snapMe:function(){tokens.forEach(function(t){if(t.role==="me"){t.x=t.x0;t.y=t.y0;}});},
+    addGhost:function(g){ghosts.push(g);drawTrails();},
+    ghosts:function(){return ghosts.length;},
+    clearGhosts:function(){ghosts=[];drawTrails();}
+  };
+}
+
+/* ---------- state ---------- */
+var $=function(s){return document.querySelector(s);};
+var state={scenarios:[],current:null,sessions:[],challenges:[],
+  progress:{rank:"青铜",streak:0,lastDate:null,count:0,stars:0},
+  draftStars:0,optSnaps:[],activeTwist:null,
+  chMode:"build",chCurrent:null,chDraftStars:0,chVerdict:null};
+var mainPitch, chPitch;
+
+function todayStr(){var d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+function dayDiff(a,b){return Math.round((new Date(b)-new Date(a))/86400000);}
+function cssvar(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
+function esc(s){return String(s).replace(/[&<>]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;"}[c];});}
+
+/* ---------- init ---------- */
+(async function(){
+  mainPitch=Pitch("board","trails"); chPitch=Pitch("chBoard","chTrails");
+  var custom=await store.getJSON(K.custom)||[];
+  state.scenarios=BUILTIN.concat(custom);
+  state.sessions=await store.getJSON(K.sessions)||[];
+  state.challenges=await store.getJSON(K.ch)||[];
+  var p=await store.getJSON(K.progress); if(p)state.progress=Object.assign(state.progress,p);
+  var curId=await store.getJSON(K.current)||BUILTIN[0].id;
+  loadScenario(curId,false);
+  $("#rankSel").value=state.progress.rank; paintRank(); paintStreak();
+  renderHistory(); renderLibrary(); renderWar(); resetChBuild();
+  bind();
+})();
+
+var barStyle=document.createElement("style"); document.head.appendChild(barStyle);
+function paintRank(){$("#rankdot").style.background=cssvar(RANKS[state.progress.rank]||"--bronze");}
+function paintStreak(){$("#streakN").textContent=state.progress.streak||0;}
+
+/* ---------- today: scenario ---------- */
+function loadScenario(id,save){
+  var s=state.scenarios.find(function(x){return x.id===id;})||state.scenarios[0];
+  state.current=s;
+  var col=cssvar(RANKS[s.rank]||"--bronze");
+  $("#scnTag").textContent=s.rank; $("#scnTag").style.background=col;
+  $("#scnTitle").textContent=s.title; $("#scnSit").textContent=s.sit; $("#scnQ").textContent=s.q;
+  barStyle.textContent="#scnCard:before{background:"+col+"!important}";
+  mainPitch.set(s.tokens);
+  state.optSnaps=[]; state.activeTwist=null;
+  renderTwists(); updateOptUI();
+  if(save)store.setJSON(K.current,id);
+}
+function renderTwists(){
+  var box=$("#twChips"), tw=(state.current.twists&&state.current.twists.length)?state.current.twists:DEF_TWISTS;
+  box.innerHTML=tw.map(function(t,i){return '<button class="twist" data-i="'+i+'">'+esc(t)+'</button>';}).join("");
+  $("#twBanner").classList.remove("on");
+  box.querySelectorAll(".twist").forEach(function(b){
+    b.addEventListener("click",function(){
+      var i=+this.dataset.i;
+      if(state.activeTwist===i){state.activeTwist=null;this.classList.remove("on");$("#twBanner").classList.remove("on");return;}
+      state.activeTwist=i;
+      box.querySelectorAll(".twist").forEach(function(x){x.classList.remove("on");}); this.classList.add("on");
+      $("#twBanner").innerHTML='🔀 如果 <b>'+esc(tw[i])+'</b> —— 那现在该怎么办？把这一种也摆出来，记下来。';
+      $("#twBanner").classList.add("on");
+    });
+  });
+  // 默认收起变招提示
+  $("#twBox").classList.remove("on");
+  $("#twToggle").classList.remove("on");
+  $("#twToggleText").textContent='想要提示？看看几种"如果…"的情况';
+}
+function updateOptUI(){
+  var n=mainPitch.ghosts();
+  $("#optCount").textContent=n+" 种";
+  var c=$("#ochips"); c.innerHTML="";
+  for(var i=1;i<=n;i++){var d=document.createElement("div");d.className="ochip";d.textContent=i;c.appendChild(d);}
+  var nu=$("#onudge");
+  nu.textContent = n===0?"摆好一种就点这里记下，再想下一种。" : n===1?"不错——还有别的跑法吗？再来一种。" :
+    n===2?"两种了！第三种，哪个最阴、最难防？" : "想出 "+n+" 种了，挑一个你觉得最好的，说说为什么。";
+}
+
+/* ---------- bindings ---------- */
+function bind(){
+  document.querySelectorAll(".tabs button").forEach(function(btn){
+    btn.addEventListener("click",function(){
+      document.querySelectorAll(".tabs button").forEach(function(b){b.classList.remove("on");}); btn.classList.add("on");
+      document.querySelectorAll(".view").forEach(function(v){v.classList.remove("on");}); $("#v-"+btn.dataset.v).classList.add("on");
+      if(btn.dataset.v==="today")setTimeout(function(){mainPitch.draw();},30);
+      if(btn.dataset.v==="ch")setTimeout(function(){chPitch.draw();},30);
+    });
+  });
+  $("#rankSel").addEventListener("change",function(){state.progress.rank=this.value;store.setJSON(K.progress,state.progress);paintRank();});
+
+  // twist toggle
+  $("#twToggle").addEventListener("click",function(){
+    var open=$("#twBox").classList.toggle("on");
+    this.classList.toggle("on",open);
+    $("#twToggleText").textContent=open?'已展开 · 点收起':'想要提示？看看几种"如果…"的情况';
+  });
+
+  $("#resetBtn").addEventListener("click",function(){mainPitch.reset();});
+  $("#editBtn").addEventListener("click",function(){var e=!mainPitch.editing();mainPitch.edit(e);this.classList.toggle("on",e);});
+  addMenuWire("#addWrap","#addMenu",function(role){mainPitch.add(role);});
+
+  $("#optAdd").addEventListener("click",function(){
+    var run=mainPitch.meRun();
+    if(!run||(Math.abs(run.x-run.x0)<2&&Math.abs(run.y-run.y0)<2)){toast("先把金色的『你』拖到一个位置");return;}
+    var n=mainPitch.ghosts()+1;
+    mainPitch.addGhost({x0:run.x0,y0:run.y0,x:run.x,y:run.y,n:n});
+    state.optSnaps.push(mainPitch.tokens().map(function(t){return {role:t.role,x:Math.round(t.x),y:Math.round(t.y)};}));
+    mainPitch.snapMe(); mainPitch.render(); updateOptUI();
+    toast("第 "+n+" 招记下了");
+  });
+  $("#optClear").addEventListener("click",function(){mainPitch.clearGhosts();state.optSnaps=[];updateOptUI();});
+
+  document.querySelectorAll("#stars .star").forEach(function(st){st.addEventListener("click",function(){state.draftStars=+this.dataset.s;paintStars("#stars",state.draftStars);});});
+  $("#saveBtn").addEventListener("click",saveSession);
+
+  $("#newBtn").addEventListener("click",function(){$("#newForm").classList.toggle("on");});
+  $("#nfSave").addEventListener("click",createScenario);
+
+  /* challenge */
+  $("#chReset").addEventListener("click",function(){if(state.chMode==="build")resetChBuild();else if(state.chCurrent)chPitch.set(state.chCurrent.tokens);});
+  $("#chEdit").addEventListener("click",function(){var e=!chPitch.editing();chPitch.edit(e);this.classList.toggle("on",e);});
+  addMenuWire("#chAddWrap","#chAddMenu",function(role){chPitch.add(role);});
+  $("#chSend").addEventListener("click",sendChallenge);
+  document.querySelectorAll("#dStars .star").forEach(function(st){st.addEventListener("click",function(){state.chDraftStars=+this.dataset.s;paintStars("#dStars",state.chDraftStars);});});
+  $("#vPass").addEventListener("click",function(){state.chVerdict="pass";$("#vPass").classList.add("on");$("#vFail").classList.remove("on");});
+  $("#vFail").addEventListener("click",function(){state.chVerdict="fail";$("#vFail").classList.add("on");$("#vPass").classList.remove("on");});
+  $("#dSave").addEventListener("click",saveDadResult);
+
+  window.addEventListener("resize",function(){mainPitch.draw();chPitch.draw();});
+}
+function addMenuWire(wrapSel,menuSel,onPick){
+  var wrap=$(wrapSel),menu=$(menuSel);
+  wrap.addEventListener("click",function(e){if(e.target.closest(".addmenu"))return;menu.classList.toggle("on");});
+  menu.querySelectorAll("button").forEach(function(b){b.addEventListener("click",function(){onPick(this.dataset.r);menu.classList.remove("on");});});
+  document.addEventListener("click",function(e){if(!e.target.closest(wrapSel))menu.classList.remove("on");});
+}
+function paintStars(sel,v){document.querySelectorAll(sel+" .star").forEach(function(st){st.classList.toggle("lit",+st.dataset.s<=v);});}
+
+/* ---------- save day ---------- */
+function saveSession(){
+  var date=todayStr();
+  var sess={id:Date.now(),date:date,scn:state.current.title,rank:state.current.rank,
+    stars:state.draftStars,opts:mainPitch.ghosts(),ans:$("#kidAns").value.trim(),note:$("#dadNote").value.trim()};
+  state.sessions.unshift(sess);
+  var p=state.progress;
+  if(p.lastDate!==date){ if(p.lastDate&&dayDiff(p.lastDate,date)===1)p.streak=(p.streak||0)+1; else p.streak=1; p.lastDate=date; }
+  p.count=(p.count||0)+1; p.stars=(p.stars||0)+state.draftStars;
+  store.setJSON(K.sessions,state.sessions); store.setJSON(K.progress,p);
+  paintStreak(); renderHistory();
+  $("#kidAns").value="";$("#dadNote").value="";state.draftStars=0;paintStars("#stars",0);
+  mainPitch.clearGhosts();state.optSnaps=[];updateOptUI();
+  toast("已记录 ✓ 连续 "+p.streak+" 天 · 累计 "+p.count+" 次");
+}
+function renderHistory(){
+  $("#stTotal").textContent=state.progress.count||0; $("#stStreak").textContent=state.progress.streak||0; $("#stStars").textContent=state.progress.stars||0;
+  var L=$("#histList");
+  if(!state.sessions.length){L.innerHTML='<div class="empty"><b>还没有记录。</b><br>今天练完点「保存今日」，<br>这里就开始一天天长起来了。</div>';return;}
+  L.innerHTML=state.sessions.map(function(s){
+    var stars=s.stars?'<span class="ss">'+"★".repeat(s.stars)+'</span>':'';
+    var ob=s.opts>1?'<span class="badge">想出 '+s.opts+' 招</span>':'';
+    var ans=s.ans?'<div class="ans"><b>他说：</b>'+esc(s.ans)+'</div>':'';
+    var note=s.note?'<div class="note">📝 '+esc(s.note)+'</div>':'';
+    return '<div class="hcard"><div class="top"><span class="d">'+s.date+'</span><span class="t">'+esc(s.scn)+'</span>'+ob+stars+'</div>'+ans+note+'</div>';
+  }).join("");
+}
+
+/* ---------- library ---------- */
+function renderLibrary(){
+  var L=$("#scnList");
+  L.innerHTML=state.scenarios.map(function(s){
+    var col=cssvar(RANKS[s.rank]||"--bronze"), cur=state.current&&s.id===state.current.id;
+    return '<div class="scnrow'+(cur?' cur':'')+'"><span class="pill" style="background:'+col+'">'+s.rank+'</span>'+
+      '<div class="nm"><div class="tt">'+esc(s.title)+'</div>'+(cur?'<div class="cur-tag">● 今日场景</div>':'')+'</div>'+
+      '<button class="use" data-id="'+s.id+'">'+(cur?'当前':'设为今日')+'</button></div>';
+  }).join("");
+  L.querySelectorAll(".use").forEach(function(b){b.addEventListener("click",function(){
+    loadScenario(this.dataset.id,true);renderLibrary();document.querySelector('.tabs button[data-v="today"]').click();toast("已切到今日场景");
+  });});
+}
+function createScenario(){
+  var title=$("#nfTitle").value.trim(); if(!title){toast("先填个标题");return;}
+  var s={id:"c"+Date.now(),rank:$("#nfRank").value,title:title,sit:$("#nfSit").value.trim()||"（情境待补充）",
+    q:$("#nfQ").value.trim()||"你会怎么处理？摆出来，说说为什么。",twists:DEF_TWISTS,
+    tokens:[T("me",65,44),T("team",45,42),T("ball",45,45),T("opp",55,30),T("opp",72,24)]};
+  state.scenarios.push(s);
+  store.setJSON(K.custom,state.scenarios.filter(function(x){return /^c\d/.test(x.id);}));
+  $("#nfTitle").value="";$("#nfSit").value="";$("#nfQ").value="";$("#newForm").classList.remove("on");
+  loadScenario(s.id,true);renderLibrary();document.querySelector('.tabs button[data-v="today"]').click();toast("场景已建好并设为今日 ✓");
+}
+
+/* ---------- challenge ---------- */
+function resetChBuild(){
+  state.chMode="build"; state.chCurrent=null;
+  $("#stageT").textContent="出题给爸爸"; $("#qAsk").classList.remove("on");
+  $("#buildBox").style.display=""; $("#dRate").classList.remove("on");
+  $("#chQ").value="";
+  chPitch.set([T("me",55,46),T("ball",55,49),T("team",36,40),T("opp",55,32),T("opp",70,42)]);
+}
+function sendChallenge(){
+  var q=$("#chQ").value.trim(); if(!q){toast("先写一句给爸爸的问题");return;}
+  var c={id:Date.now(),date:todayStr(),q:q,
+    tokens:chPitch.tokens().map(function(t){return {role:t.role,x:Math.round(t.x),y:Math.round(t.y)};}),
+    answered:false,dadStars:0,verdict:null};
+  state.challenges.unshift(c); store.setJSON(K.ch,state.challenges);
+  renderWar(); resetChBuild();
+  toast("战书已下 ⚔️ 让爸爸来答");
+}
+function answerChallenge(id){
+  var c=state.challenges.find(function(x){return x.id===id;}); if(!c)return;
+  state.chMode="answer"; state.chCurrent=c; state.chDraftStars=0; state.chVerdict=null;
+  $("#stageT").textContent="爸爸作答中"; 
+  $("#qAsk").innerHTML='⚔️ 乔飞的问题：<b>'+esc(c.q)+'</b>'; $("#qAsk").classList.add("on");
+  $("#buildBox").style.display="none";
+  paintStars("#dStars",0); $("#vPass").classList.remove("on"); $("#vFail").classList.remove("on");
+  $("#dRate").classList.add("on");
+  chPitch.set(c.tokens);
+  document.querySelector('.tabs button[data-v="ch"]').click();
+  $("#qAsk").scrollIntoView({behavior:"smooth",block:"start"});
+}
+function saveDadResult(){
+  if(!state.chCurrent)return;
+  if(!state.chVerdict){toast("先选：过关 还是 没答对");return;}
+  var c=state.chCurrent;
+  c.answered=true; c.dadStars=state.chDraftStars; c.verdict=state.chVerdict;
+  store.setJSON(K.ch,state.challenges); renderWar(); resetChBuild();
+  toast(state.chVerdict==="pass"?"爸爸过关 ✓ 记下了":"爸爸翻车了 😎 记下了");
+}
+function renderWar(){
+  var made=state.challenges.length;
+  var pass=state.challenges.filter(function(c){return c.verdict==="pass";}).length;
+  var fail=state.challenges.filter(function(c){return c.verdict==="fail";}).length;
+  $("#chMade").textContent=made; $("#chPass").textContent=pass; $("#chFail").textContent=fail;
+  var L=$("#warList");
+  if(!made){L.innerHTML='<div class="empty"><b>还没出过题。</b><br>上面摆一个难球、写个问题，<br>点「下战书」考考爸爸。</div>';return;}
+  L.innerHTML=state.challenges.map(function(c){
+    var right=c.answered
+      ? '<div class="st"><div class="done">'+(c.verdict==="pass"?"✓ 过关":"✗ 翻车")+(c.dadStars?'<br>'+"★".repeat(c.dadStars):"")+'</div></div>'
+      : '<div class="st"><button class="ans" data-id="'+c.id+'">爸爸来答</button></div>';
+    return '<div class="warcard"><div class="wq"><div class="qq">'+esc(c.q)+'</div><div class="wd">'+c.date+'</div></div>'+right+'</div>';
+  }).join("");
+  L.querySelectorAll(".ans").forEach(function(b){b.addEventListener("click",function(){answerChallenge(+this.dataset.id);});});
+}
+
+/* ---------- toast ---------- */
+var toastT;
+function toast(m){var t=$("#toast");t.textContent=m;t.classList.add("on");clearTimeout(toastT);toastT=setTimeout(function(){t.classList.remove("on");},2200);}
+</script>
