@@ -512,10 +512,12 @@ var DEF_TWISTS=["对方多上来一个人","你的队友没接到","换到另一
 function Pitch(boardId,trailId){
   var board=document.getElementById(boardId), trails=document.getElementById(trailId);
   var tokens=[], editing=false;
+  var initLayout=[];         // 场景初始局面快照（每套解法画完后还原到这）
   var strokes=[];            // 当前这套解法已画的笔: {type,points:[{x,y}]}
   var solutions=[];          // 已完成的解法(进球闭环): {steps:[strokes]}
   var drawing=null;          // 正在拖动产生的笔
   var onChange=null;         // 笔数/解法数变化回调
+  function restoreLayout(){tokens.forEach(function(t,i){if(initLayout[i]){t.x=initLayout[i].x;t.y=initLayout[i].y;}});}
   function clientWH(){return [board.clientWidth,board.clientHeight];}
   function mk(t){return document.createElementNS("http://www.w3.org/2000/svg",t);}
 
@@ -691,17 +693,17 @@ function Pitch(boardId,trailId){
 
   return {
     el:board,
-    set:function(arr){tokens=arr.map(function(t,i){return {id:i+"_"+Math.random().toString(36).slice(2,6),role:t.role,x:t.x,y:t.y};});strokes=[];solutions=[];drawing=null;render();},
+    set:function(arr){tokens=arr.map(function(t,i){return {id:i+"_"+Math.random().toString(36).slice(2,6),role:t.role,x:t.x,y:t.y};});initLayout=arr.map(function(t){return {x:t.x,y:t.y};});strokes=[];solutions=[];drawing=null;render();},
     tokens:function(){return tokens;},
     add:function(role){tokens.push({id:"a"+Date.now(),role:role,x:50,y:role==="ball"?60:66});render();},
-    reset:function(){strokes=[];drawing=null;drawTrails();if(onChange)onChange();}, // 复位=清当前这套笔(不动已进球的解法,不动棋子)
+    reset:function(){strokes=[];drawing=null;restoreLayout();render();if(onChange)onChange();}, // 复位=清当前这套笔 + 棋子回到开局
     edit:function(b){editing=b;board.classList.toggle("editing",b);},
     editing:function(){return editing;},
     render:render, draw:drawTrails,
     // --- 解法 API ---
     strokeCount:function(){return strokes.length;},
     undoStroke:function(){strokes.pop();render();if(onChange)onChange();},
-    commitSolution:function(){ if(!strokes.length)return false; solutions.push({steps:strokes,ts:Date.now()}); strokes=[]; drawing=null; render(); if(onChange)onChange(); return true; },
+    commitSolution:function(){ if(!strokes.length)return false; solutions.push({steps:strokes,ts:Date.now()}); strokes=[]; drawing=null; restoreLayout(); render(); if(onChange)onChange(); return true; },
     solutionCount:function(){return solutions.length;},
     solutions:function(){return solutions;},
     clearAll:function(){strokes=[];solutions=[];drawing=null;render();if(onChange)onChange();},
