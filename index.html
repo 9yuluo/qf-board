@@ -583,7 +583,7 @@ function Pitch(boardId,trailId){
   var solutions=[];          // 已完成的解法(进球闭环): {steps:[strokes]}
   var drawing=null;          // 正在拖动产生的笔
   var onChange=null;         // 笔数/解法数变化回调
-  function restoreLayout(){tokens.forEach(function(t,i){if(initLayout[i]){t.x=initLayout[i].x;t.y=initLayout[i].y;}});}
+  function restoreLayout(){tokens.forEach(function(t,i){if(initLayout[i]){t.x=initLayout[i].x;t.y=initLayout[i].y;}});initBallAttach();}
   function clientWH(){return [board.clientWidth,board.clientHeight];}
   function mk(t){return document.createElementNS("http://www.w3.org/2000/svg",t);}
 
@@ -692,21 +692,50 @@ function Pitch(boardId,trailId){
     }
   }
 
-  // 球吸附：返回球当前粘着的球员(脚下有球)，没有则 null
+  // 球的磁吸：球粘在某球员身边的某个方位（不再和人重叠，手指能分开抓）
   function ballToken(){var b=null;tokens.forEach(function(t){if(t.role==="ball")b=t;});return b;}
+  function tokById(id){var r=null;tokens.forEach(function(t){if(t.id===id)r=t;});return r;}
+  // 球贴边偏移：按球场宽高比换算，让球绕人转一圈视觉上是正圆
+  function ballOrbit(){var wh=clientWH(),W=wh[0]||300,H=wh[1]||400;var px=23;return {ox:px/W*100, oy:px/H*100};}
+  function pxDist(a,b){var wh=clientWH(),W=wh[0]||300,H=wh[1]||400;return Math.hypot((a.x-b.x)*W/100,(a.y-b.y)*H/100);}
+  // 把球摆到 player 身上的 angle 方位（angle 弧度：-PI/2=上/朝球门，0=右）
+  function placeBall(ball,player,angle){
+    var o=ballOrbit();
+    ball.attachedTo=player.id; ball.angle=angle;
+    ball.x=Math.max(2,Math.min(98,player.x+Math.cos(angle)*o.ox));
+    ball.y=Math.max(2,Math.min(98,player.y+Math.sin(angle)*o.oy));
+  }
+  // 当前持球人：优先看 attachedTo，没有则按邻近(像素<46)回退
   function holderOf(ball){
     if(!ball)return null;
-    var best=null,bd=8;
-    tokens.forEach(function(t){
-      if(t.role==="ball")return;
-      var d=Math.hypot(t.x-ball.x,t.y-ball.y);
-      if(d<bd){bd=d;best=t;}
-    });
+    if(ball.attachedTo){var h=tokById(ball.attachedTo);if(h)return h;}
+    var best=null,bd=46;
+    tokens.forEach(function(t){if(t.role==="ball")return;var d=pxDist(t,ball);if(d<bd){bd=d;best=t;}});
     return best;
   }
-  function syncBallToHolder(){ // 把球贴到持球人脚下(略偏下)
+  // 球落地结算：吸到最近球员、停在"来球那一侧"；够不到则成松球
+  function settleBall(){
     var b=ballToken(); if(!b)return;
-    var h=holderOf(b); if(h){b.x=h.x;b.y=Math.min(97,h.y+3);}
+    var best=null,bd=52;
+    tokens.forEach(function(t){if(t.role==="ball")return;var d=pxDist(t,b);if(d<bd){bd=d;best=t;}});
+    if(best){
+      // 角度 = 从持球人指向球当前位置（视觉上球停在它飞来的那一侧/接球脚）
+      var ang=Math.atan2(b.y-best.y, b.x-best.x);
+      if(!isFinite(ang)||(b.x===best.x&&b.y===best.y))ang=-Math.PI/2;
+      placeBall(b,best,ang);
+    }else{ b.attachedTo=null; } // 松球，留在原地
+  }
+  // 场景加载时：球若靠近某人，吸附到他朝球门一侧（开局自然在脚前）
+  function initBallAttach(){
+    var b=ballToken(); if(!b){return;}
+    var best=null,bd=60;
+    tokens.forEach(function(t){if(t.role==="ball")return;var d=pxDist(t,b);if(d<bd){bd=d;best=t;}});
+    if(best){
+      // 朝球门(上方)略偏球当前所在侧，默认 -PI/2（正上=朝球门）
+      var ang=Math.atan2(b.y-best.y, b.x-best.x);
+      if(!isFinite(ang)||(Math.abs(b.x-best.x)<0.5&&Math.abs(b.y-best.y)<0.5))ang=-Math.PI/2;
+      placeBall(b,best,ang);
+    }else{ b.attachedTo=null; }
   }
 
   // 拖动产生线：拖球员→跑动(脚下有球则带球波浪);拖球→传球
@@ -721,17 +750,23 @@ function Pitch(boardId,trailId){
       var start=P(e);
       // 判定这一拖是什么线
       var ball=ballToken();
-      var dragHasBall = (t.role!=="ball") && ball && Math.hypot(t.x-ball.x,t.y-ball.y)<8; // 球员脚下有球
+      var holder=ball?holderOf(ball):null;
+      var dragHasBall = (t.role!=="ball") && ball && holder && holder.id===t.id; // 这名球员是持球人
       var lineType = t.role==="ball" ? "pass" : (dragHasBall ? "dribble" : "run");
       // 编辑模式不画线，只挪位置
       var doDraw = !editing;
       drawing = doDraw ? {type:lineType, points:[start]} : null;
+      var prev={x:t.x,y:t.y};
       function move(ev){
         var p=P(ev);
+        var mvx=p.x-prev.x, mvy=p.y-prev.y;
         t.x=p.x; t.y=p.y; el.style.left=t.x+"%"; el.style.top=t.y+"%";
-        if(dragHasBall&&t.role!=="ball"){ // 带球：球跟着脚走
-          if(ball){ball.x=t.x;ball.y=Math.min(98,t.y);var be=board.querySelector('.tok.ball');if(be){be.style.left=ball.x+"%";be.style.top=ball.y+"%";}}
+        if(dragHasBall&&t.role!=="ball"&&ball){ // 带球：球领在前进方向（脚前领球）
+          var ang = (Math.abs(mvx)+Math.abs(mvy)>0.3) ? Math.atan2(mvy,mvx) : (ball.angle!=null?ball.angle:-Math.PI/2);
+          placeBall(ball,t,ang);
+          var be=board.querySelector('.tok.ball');if(be){be.style.left=ball.x+"%";be.style.top=ball.y+"%";}
         }
+        prev={x:t.x,y:t.y};
         if(drawing){
           var last=drawing.points[drawing.points.length-1];
           if(Math.hypot(p.x-last.x,p.y-last.y)>1.2)drawing.points.push(p);
@@ -741,8 +776,8 @@ function Pitch(boardId,trailId){
       function up(){
         el.classList.remove("drag");try{el.releasePointerCapture(e.pointerId);}catch(_){}
         el.removeEventListener("pointermove",move);el.removeEventListener("pointerup",up);el.removeEventListener("pointercancel",up);
-        // 传球后：球吸附到最近球员；带球后：球继续贴着拖动者
-        if(t.role==="ball"){ syncBallToHolder(); }
+        // 拖球→落地结算(吸到最近人的接球侧/或成松球)；拖带球的人→球已贴在前方，保持
+        if(t.role==="ball"){ settleBall(); }
         // 成笔（移动超过阈值才算一笔）
         if(drawing&&drawing.points.length>=2){
           var first=drawing.points[0],lastp=drawing.points[drawing.points.length-1];
@@ -759,7 +794,7 @@ function Pitch(boardId,trailId){
 
   return {
     el:board,
-    set:function(arr){tokens=arr.map(function(t,i){return {id:i+"_"+Math.random().toString(36).slice(2,6),role:t.role,x:t.x,y:t.y};});initLayout=arr.map(function(t){return {x:t.x,y:t.y};});strokes=[];solutions=[];drawing=null;render();},
+    set:function(arr){tokens=arr.map(function(t,i){return {id:i+"_"+Math.random().toString(36).slice(2,6),role:t.role,x:t.x,y:t.y};});initLayout=arr.map(function(t){return {x:t.x,y:t.y};});strokes=[];solutions=[];drawing=null;initBallAttach();render();},
     tokens:function(){return tokens;},
     add:function(role){tokens.push({id:"a"+Date.now(),role:role,x:50,y:role==="ball"?60:66});render();},
     reset:function(){strokes=[];drawing=null;restoreLayout();render();if(onChange)onChange();}, // 复位=清当前这套笔 + 棋子回到开局
