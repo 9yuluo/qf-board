@@ -185,6 +185,32 @@
   .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
   :focus-visible{outline:2px solid var(--me);outline-offset:2px}
   @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+
+  /* history per-session buttons */
+  .hbtns{display:flex;gap:8px;margin-top:10px}
+  .hbtn{background:#14120E;border:1px solid var(--line);color:var(--mut2);font:inherit;font-size:12px;font-weight:600;padding:8px 11px;border-radius:9px;cursor:pointer;transition:.15s}
+  .hbtn:hover{border-color:#52483680;color:var(--ink)}
+  .hbtn.rp{color:var(--me);border-color:#5a4a24}
+
+  /* replay overlay */
+  .replay{position:fixed;inset:0;background:#0b0907ee;z-index:200;display:none;overflow:auto;padding:18px 14px}
+  .replay.on{display:block}
+  .rpcard{max-width:480px;margin:0 auto;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px;box-shadow:0 20px 60px #000a}
+  .rphd{display:flex;align-items:center;gap:8px;margin-bottom:3px}
+  .rptitle{font-family:"Oswald",sans-serif;font-weight:700;font-size:17px;flex:1;letter-spacing:.3px}
+  .rpclose{background:#14120E;border:1px solid var(--line);color:var(--ink);width:32px;height:32px;border-radius:9px;font-size:15px;cursor:pointer;flex:none}
+  .rpsub{font-size:12px;color:var(--mut2);margin-bottom:11px;line-height:1.45}
+  .rpsols{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:11px}
+  .rpsol{background:#14120E;border:1px solid var(--line);color:var(--mut2);font:inherit;font-size:12px;font-weight:600;padding:6px 11px;border-radius:8px;cursor:pointer;font-family:"Oswald",sans-serif}
+  .rpsol.on{background:#2c2418;border-color:var(--me);color:var(--me)}
+  .rpboard{margin:0 0 10px}
+  .rpstepinfo{text-align:center;font-family:"Oswald",sans-serif;font-weight:600;font-size:13px;color:var(--me);min-height:16px;margin-bottom:11px;letter-spacing:.3px}
+  .rpctrl{display:flex;gap:8px}
+  .rpbtn{flex:1;background:var(--panel);border:1px solid var(--line);color:var(--ink);font:inherit;font-weight:600;font-size:13px;padding:12px 8px;border-radius:11px;cursor:pointer}
+  .rpbtn:hover{border-color:#52483680}
+  .rpbtn.play{background:linear-gradient(180deg,#3a3328,#2c271d);border-color:#6a5d40}
+  .rphint{font-size:11px;color:var(--mut2);text-align:center;margin-top:10px;line-height:1.5}
+  .tok.ro{pointer-events:none;cursor:default}
 </style>
 
 <div class="wrap">
@@ -401,6 +427,41 @@
   </section>
 </div>
 
+<div class="replay" id="replay">
+  <div class="rpcard">
+    <div class="rphd">
+      <div class="rptitle" id="rpTitle">回放</div>
+      <button class="rpclose" id="rpClose">✕</button>
+    </div>
+    <div class="rpsub" id="rpSub"></div>
+    <div class="rpsols" id="rpSols"></div>
+    <div class="board rpboard" id="rpBoard">
+      <svg class="markings" viewBox="0 0 100 133" preserveAspectRatio="none">
+        <g fill="none" stroke="var(--grass-line)" stroke-width="0.5">
+          <rect x="2" y="2" width="96" height="129"/><line x1="2" y1="66.5" x2="98" y2="66.5"/>
+          <circle cx="50" cy="66.5" r="13"/><circle cx="50" cy="66.5" r="0.8" fill="var(--grass-line)" stroke="none"/>
+          <rect x="22" y="2" width="56" height="20"/><rect x="36" y="2" width="28" height="9"/>
+          <path d="M34 22 A18 18 0 0 0 66 22"/>
+          <rect x="22" y="111" width="56" height="20"/><rect x="36" y="122" width="28" height="9"/>
+          <path d="M34 111 A18 18 0 0 1 66 111"/>
+        </g>
+      </svg>
+      <svg class="trails" id="rpTrails"><defs>
+        <marker id="ar-me-r" markerWidth="7" markerHeight="7" refX="5.5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--me)"/></marker>
+        <marker id="ar-team-r" markerWidth="7" markerHeight="7" refX="5.5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--team)"/></marker>
+        <marker id="ar-ball-r" markerWidth="7" markerHeight="7" refX="5.5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--ball)"/></marker>
+      </defs></svg>
+    </div>
+    <div class="rpstepinfo" id="rpStepInfo"></div>
+    <div class="rpctrl">
+      <button class="rpbtn" id="rpPrev">◀ 上一步</button>
+      <button class="rpbtn play" id="rpPlay">▶ 播放</button>
+      <button class="rpbtn" id="rpNext">下一步 ▶</button>
+    </div>
+    <div class="rphint">选「第N套」看那一套 · 一步步走，或点播放自动演一遍</div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -461,6 +522,11 @@ var BUILTIN=[
   q:"上抢还是退防？如果上抢——从哪个角度？把你的第一步摆出来。",
   twists:["对方马上传出去了","你身后没人保护","队友都还没回防"],
   tokens:[T("me",60,50),T("opp",58,42),T("ball",58,45),T("team",70,55),T("opp",50,30)]},
+ {id:"b15",rank:"青铜",title:"边路·绕开那个人",
+  sit:"你在右边路拿球，正前方一个红色就堵在你往球门冲的那条线上，他身后是空当。",
+  q:"你怎么冲到能射门的位置？把你的路线画出来——画完瞄一眼：这条线有没有撞到红色身上？",
+  twists:["红的不上抢，只往后退","红1身后还有人保护","你内切方向被另一个红的堵了","队友套上来想跟你做墙"],
+  tokens:[T("me",78,48),T("ball",78,51),T("opp",70,32),T("opp",52,26),T("team",50,40)]},
 
  /* 白银 - 建立"接球前看"意识 */
  {id:"b7",rank:"白银",title:"X2 · 接球前先看",
@@ -894,7 +960,14 @@ function bind(){
   $("#vFail").addEventListener("click",function(){state.chVerdict="fail";$("#vFail").classList.add("on");$("#vPass").classList.remove("on");});
   $("#dSave").addEventListener("click",saveDadResult);
 
-  window.addEventListener("resize",function(){mainPitch.draw();chPitch.draw();});
+  // 回放控制
+  $("#rpClose").addEventListener("click",closeReplay);
+  $("#replay").addEventListener("click",function(e){if(e.target===this)closeReplay();});
+  $("#rpPrev").addEventListener("click",function(){stopPlay();if(rp.step>0){rp.step--;drawReplay();}});
+  $("#rpNext").addEventListener("click",function(){stopPlay();var st=currentSteps();if(rp.step<st.length-1){rp.step++;drawReplay();}});
+  $("#rpPlay").addEventListener("click",togglePlay);
+
+  window.addEventListener("resize",function(){mainPitch.draw();chPitch.draw();if($("#replay").classList.contains("on"))drawReplay();});
 }
 function addMenuWire(wrapSel,menuSel,onPick){
   var wrap=$(wrapSel),menu=$(menuSel);
@@ -916,6 +989,7 @@ function saveSession(){
   });
   var sess={id:Date.now(),date:date,scn:state.current.title,rank:state.current.rank,
     stars:state.draftStars,
+    init:(state.current.tokens||[]).map(function(t){return {role:t.role,x:t.x,y:t.y};}), // 开局布置（回放用）
     solutions:solData,            // 完整解法数据（新）
     solCount:solData.length,      // 几套解法
     ans:$("#kidAns").value.trim(),note:$("#dadNote").value.trim()};
@@ -939,8 +1013,11 @@ function renderHistory(){
     var ob=nsol>0?'<span class="badge">'+nsol+' 套解法</span>':'';
     var ans=s.ans?'<div class="ans"><b>他说：</b>'+esc(s.ans)+'</div>':'';
     var note=s.note?'<div class="note">📝 '+esc(s.note)+'</div>':'';
-    return '<div class="hcard"><div class="top"><span class="d">'+s.date+'</span><span class="t">'+esc(s.scn)+'</span>'+ob+stars+'</div>'+ans+note+'</div>';
+    var btns='<div class="hbtns">'+(nsol>0?'<button class="hbtn rp" data-id="'+s.id+'">▶ 回放</button>':'')+'<button class="hbtn cp" data-id="'+s.id+'">📋 复制这次</button></div>';
+    return '<div class="hcard"><div class="top"><span class="d">'+s.date+'</span><span class="t">'+esc(s.scn)+'</span>'+ob+stars+'</div>'+ans+note+btns+'</div>';
   }).join("");
+  L.querySelectorAll(".hbtn.rp").forEach(function(b){b.addEventListener("click",function(){openReplay(+this.dataset.id);});});
+  L.querySelectorAll(".hbtn.cp").forEach(function(b){b.addEventListener("click",function(){copySession(+this.dataset.id);});});
 }
 
 /* ---------- library ---------- */
@@ -1018,6 +1095,152 @@ function renderWar(){
     return '<div class="warcard"><div class="wq"><div class="qq">'+esc(c.q)+'</div><div class="wd">'+c.date+'</div></div>'+right+'</div>';
   }).join("");
   L.querySelectorAll(".ans").forEach(function(b){b.addEventListener("click",function(){answerChallenge(+this.dataset.id);});});
+}
+
+/* ---------- replay (回放) ---------- */
+var rp={sess:null,solIdx:0,step:0,playing:false,timer:null};
+function mkR(t){return document.createElementNS("http://www.w3.org/2000/svg",t);}
+function pct2pxR(pts,W,H){return pts.map(function(p){return {x:p.x/100*W,y:p.y/100*H};});}
+function smoothR(pts){
+  if(pts.length<2)return "";
+  if(pts.length===2)return "M"+pts[0].x+","+pts[0].y+" L"+pts[1].x+","+pts[1].y;
+  var d="M"+pts[0].x+","+pts[0].y;
+  for(var i=1;i<pts.length-1;i++){var mx=(pts[i].x+pts[i+1].x)/2,my=(pts[i].y+pts[i+1].y)/2;d+=" Q"+pts[i].x+","+pts[i].y+" "+mx+","+my;}
+  var last=pts[pts.length-1];d+=" L"+last.x+","+last.y;return d;
+}
+function wavyR(pts){
+  if(pts.length<2)return "";
+  var step=7,samp=[{x:pts[0].x,y:pts[0].y}],acc=0;
+  for(var i=1;i<pts.length;i++){
+    var dx=pts[i].x-pts[i-1].x,dy=pts[i].y-pts[i-1].y,seg=Math.hypot(dx,dy);
+    if(seg<0.001)continue;
+    var ux=dx/seg,uy=dy/seg,rem=seg;
+    while(acc+rem>=step){var adv=step-acc;var nx=samp[samp.length-1].x+ux*adv,ny=samp[samp.length-1].y+uy*adv;samp.push({x:nx,y:ny});acc=0;rem-=adv;}
+    acc+=rem;
+  }
+  samp.push({x:pts[pts.length-1].x,y:pts[pts.length-1].y});
+  if(samp.length<3)return smoothR(pts);
+  var amp=3.5,d="M"+samp[0].x+","+samp[0].y,k=0;
+  for(var j=1;j<samp.length;j++){
+    var a=samp[j-1],b=samp[j];var ddx=b.x-a.x,ddy=b.y-a.y,len=Math.hypot(ddx,ddy)||1;
+    var px=-ddy/len,py=ddx/len;var taper=(j>samp.length-3)?0:1;var w=Math.sin((k++)*0.9)*amp*taper;
+    d+=" L"+(b.x+px*w)+","+(b.y+py*w);
+  }
+  return d;
+}
+function styleR(p,type){
+  p.setAttribute("fill","none");p.setAttribute("stroke-linecap","round");p.setAttribute("stroke-linejoin","round");
+  if(type==="pass"){p.setAttribute("stroke","var(--ball)");p.setAttribute("stroke-width","2.4");p.setAttribute("stroke-dasharray","7 6");p.setAttribute("marker-end","url(#ar-ball-r)");}
+  else if(type==="run"){p.setAttribute("stroke","var(--me)");p.setAttribute("stroke-width","2.8");p.setAttribute("marker-end","url(#ar-me-r)");}
+  else {p.setAttribute("stroke","var(--team)");p.setAttribute("stroke-width","2.6");p.setAttribute("marker-end","url(#ar-team-r)");}
+}
+function lookupScnTokens(title){var s=state.scenarios.find(function(x){return x.title===title;});return s?s.tokens:null;}
+function currentSteps(){var sol=rp.sess&&rp.sess.solutions?rp.sess.solutions[rp.solIdx]:null;return sol&&sol.steps?sol.steps:[];}
+function openReplay(id){
+  var s=state.sessions.find(function(x){return x.id===id;}); if(!s)return;
+  rp.sess=s; rp.solIdx=0; rp.step=0; stopPlay();
+  $("#rpTitle").textContent=s.scn;
+  $("#rpSub").textContent=s.date+" · "+s.rank+" · "+(s.solCount!=null?s.solCount:(s.solutions?s.solutions.length:0))+" 套解法"+(s.stars?" · 家长 "+"★".repeat(s.stars):"");
+  $("#replay").classList.add("on");
+  renderReplayTokens(); renderReplaySols();
+  setTimeout(drawReplay,30);
+}
+function closeReplay(){stopPlay();$("#replay").classList.remove("on");rp.sess=null;}
+function renderReplayTokens(){
+  var board=$("#rpBoard");
+  board.querySelectorAll(".tok").forEach(function(e){e.remove();});
+  var toks=(rp.sess.init&&rp.sess.init.length)?rp.sess.init:lookupScnTokens(rp.sess.scn);
+  (toks||[]).forEach(function(t){
+    var el=document.createElement("div");el.className="tok "+t.role+" ro";
+    el.style.left=t.x+"%";el.style.top=t.y+"%";
+    el.innerHTML=t.role==="me"?"★":t.role==="ball"?"⚽":"";
+    board.appendChild(el);
+  });
+}
+function renderReplaySols(){
+  var n=rp.sess.solutions?rp.sess.solutions.length:0;
+  var c=$("#rpSols"); c.innerHTML="";
+  c.style.display=(n<=1)?"none":"flex";
+  for(var i=0;i<n;i++){
+    var b=document.createElement("button");b.className="rpsol"+(i===rp.solIdx?" on":"");
+    b.textContent="第"+(i+1)+"套";b.dataset.i=i;
+    b.addEventListener("click",function(){rp.solIdx=+this.dataset.i;rp.step=0;stopPlay();renderReplaySols();drawReplay();});
+    c.appendChild(b);
+  }
+}
+function drawReplay(){
+  var svg=$("#rpTrails"),board=$("#rpBoard");
+  if(!rp.sess)return;
+  var W=board.clientWidth,H=board.clientHeight;
+  svg.setAttribute("viewBox","0 0 "+W+" "+H);
+  Array.prototype.slice.call(svg.children).forEach(function(c){if(c.tagName.toLowerCase()!=="defs")c.remove();});
+  var steps=currentSteps();
+  for(var i=0;i<=rp.step&&i<steps.length;i++){
+    var st=steps[i];var pp=pct2pxR(st.points,W,H);
+    var p=mkR("path");p.setAttribute("d",st.type==="dribble"?wavyR(pp):smoothR(pp));
+    styleR(p,st.type);
+    var cur=(i===rp.step);
+    p.setAttribute("opacity",cur?"0.97":"0.38");
+    if(!cur)p.removeAttribute("marker-end");
+    svg.appendChild(p);
+    if(cur&&pp.length){
+      var dot=mkR("circle");dot.setAttribute("cx",pp[0].x);dot.setAttribute("cy",pp[0].y);dot.setAttribute("r","8");
+      dot.setAttribute("fill","#1b1813");dot.setAttribute("stroke",st.type==="pass"?"var(--ball)":st.type==="run"?"var(--me)":"var(--team)");dot.setAttribute("stroke-width","1.5");
+      svg.appendChild(dot);
+      var tx=mkR("text");tx.setAttribute("x",pp[0].x);tx.setAttribute("y",pp[0].y+3.5);tx.setAttribute("text-anchor","middle");
+      tx.setAttribute("font-size","10");tx.setAttribute("font-family","Oswald,sans-serif");tx.setAttribute("fill","#fff");
+      tx.textContent=(i+1);svg.appendChild(tx);
+    }
+  }
+  var cs=steps[rp.step];
+  var tn=cs?(cs.type==="pass"?"传球":cs.type==="run"?"跑动":"带球"):"";
+  $("#rpStepInfo").textContent=steps.length?("第 "+(rp.step+1)+" / "+steps.length+" 步 · "+tn):"这一套没有记录步骤";
+}
+function togglePlay(){
+  if(rp.playing){stopPlay();return;}
+  var steps=currentSteps(); if(!steps.length)return;
+  if(rp.step>=steps.length-1)rp.step=0;
+  rp.playing=true; $("#rpPlay").textContent="⏸ 暂停"; drawReplay();
+  rp.timer=setInterval(function(){
+    var steps=currentSteps();
+    if(rp.step>=steps.length-1){stopPlay();return;}
+    rp.step++; drawReplay();
+  },950);
+}
+function stopPlay(){rp.playing=false;if(rp.timer){clearInterval(rp.timer);rp.timer=null;}var b=$("#rpPlay");if(b)b.textContent="▶ 播放";}
+
+/* ---------- copy ONE session for coach/AI analysis ---------- */
+function copySession(id){
+  var s=state.sessions.find(function(x){return x.id===id;}); if(!s)return;
+  var L=[];
+  L.push("乔飞战术板 · 单次训练记录");
+  L.push("日期:"+s.date+" | 场景:"+s.scn+" ("+s.rank+") | 家长星:"+(s.stars||0)+" | 解法数:"+(s.solCount!=null?s.solCount:(s.solutions?s.solutions.length:0)));
+  if(s.ans)L.push("他说:"+s.ans);
+  if(s.note)L.push("备注:"+s.note);
+  L.push("坐标0-100；y越小越靠近对方球门(进攻方向)。手段:传=传球,跑=跑动,带=带球。");
+  (s.solutions||[]).forEach(function(sol,i){
+    var steps=sol.steps||[];
+    var seg=steps.map(function(st){
+      var a=st.points[0],b=st.points[st.points.length-1];
+      var nm=st.type==="pass"?"传":st.type==="run"?"跑":"带";
+      return nm+"("+a.x+","+a.y+"→"+b.x+","+b.y+")";
+    }).join("  ");
+    L.push("套"+(i+1)+" ["+steps.length+"步]: "+seg);
+  });
+  var text=L.join("\n");
+  var fname="乔飞-"+s.date+"-"+s.scn+".txt";
+  copyText(text,fname);
+}
+function copyText(t,fname){
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(t).then(function(){toast("已复制这次记录，直接粘贴给我就行");},function(){fallbackCopy(t,fname);});
+  }else fallbackCopy(t,fname);
+}
+function fallbackCopy(t,fname){
+  var ok=false;
+  try{var ta=document.createElement("textarea");ta.value=t;ta.style.position="fixed";ta.style.opacity="0";document.body.appendChild(ta);ta.focus();ta.select();ok=document.execCommand("copy");document.body.removeChild(ta);}catch(e){ok=false;}
+  if(ok){toast("已复制这次记录");return;}
+  try{var blob=new Blob([t],{type:"text/plain"});var url=URL.createObjectURL(blob);var a=document.createElement("a");a.href=url;a.download=fname||"乔飞-记录.txt";document.body.appendChild(a);a.click();setTimeout(function(){document.body.removeChild(a);URL.revokeObjectURL(url);},100);toast("已下载这次记录(可上传给我)");}catch(e2){toast("复制失败，请用整体导出");}
 }
 
 /* ---------- toast ---------- */
