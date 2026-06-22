@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-title" content="乔飞战术板">
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=3">
 <link rel="icon" type="image/png" href="apple-touch-icon.png?v=3">
-<title>乔飞的战术板 v1.1</title>
+<title>乔飞的战术板 v1.7</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -106,6 +106,19 @@
   .oadd{flex:2;background:linear-gradient(180deg,#3a3328,#2c271d);border:1px solid #6a5d40;color:var(--ink);font:inherit;font-weight:600;font-size:13.5px;padding:11px;border-radius:11px;cursor:pointer}
   .oclear{flex:1;background:transparent;border:1px solid var(--line);color:var(--mut2);font:inherit;font-size:13px;padding:11px;border-radius:11px;cursor:pointer}
   .onudge{font-size:12.5px;color:var(--me);margin-top:9px;text-align:center;min-height:1px;opacity:.9}
+
+  /* 灵感一招 idea card */
+  .ideahint{display:none;background:#241d10;border:1px solid #5a4a24;border-radius:11px;padding:10px 12px;font-size:13.5px;line-height:1.45;margin-bottom:10px;color:var(--me)}
+  .ideahint.on{display:block}
+  .ideahint b{color:var(--me)}
+  .ideabox{display:none;margin-top:10px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:11px 12px}
+  .ideabox.show{display:block}
+  .ideabtn{width:100%;background:transparent;border:1px dashed var(--line);color:var(--mut2);font:inherit;font-weight:600;font-size:13.5px;padding:11px;border-radius:10px;cursor:pointer;text-align:center;transition:.15s}
+  .ideabtn.locked{cursor:not-allowed;opacity:.55}
+  .ideabtn.unlocked{border-style:solid;border-color:#5a4a24;color:var(--me);background:#241d10}
+  .ideabtn.unlocked:hover{background:#2a2113}
+  .ideabtn.seen{color:var(--mut2);border-color:var(--line);background:transparent;border-style:dashed}
+  .ideasubhint{font-size:11px;color:#6f6757;text-align:center;margin-top:6px;line-height:1.4}
 
   .rec{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-top:12px}
   .lbl{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--mut2);font-family:"Oswald",sans-serif;font-weight:600;margin-bottom:7px}
@@ -246,6 +259,9 @@
       <div class="q"><span class="qm">?</span><span id="scnQ">—</span></div>
     </div>
 
+    <!-- 看完招后顶部出现的提示条 -->
+    <div class="ideahint" id="ideaHint">🎯 试试把 <b id="ideaHintName">这招</b> 用进下一套</div>
+
     <div class="twrap" id="twrap">
       <button class="twtoggle" id="twToggle"><span class="ic">💡</span><span id="twToggleText">想要提示？看看几种"如果…"的情况</span></button>
       <div class="twbox" id="twBox">
@@ -271,6 +287,7 @@
         <marker id="ar-team" markerWidth="7" markerHeight="7" refX="5.5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--team)"/></marker>
         <marker id="ar-opp" markerWidth="7" markerHeight="7" refX="5.5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--opp)"/></marker>
         <marker id="ar-ball" markerWidth="7" markerHeight="7" refX="5.5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--ball)"/></marker>
+        <marker id="ar-idea" markerWidth="7" markerHeight="7" refX="5.5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#d9b9ff"/></marker>
       </defs></svg>
     </div>
 
@@ -307,6 +324,11 @@
       <div class="oth"><span class="t">完整解法（每套都要打进球）</span><span class="c" id="optCount">0 套</span></div>
       <div class="ochips" id="ochips"></div>
       <div class="onudge" id="onudge"></div>
+    </div>
+    <!-- 灵感一招：只在场景有配 idea 时才显示；初始锁定 -->
+    <div class="ideabox" id="ideaBox">
+      <button class="ideabtn locked" id="ideaBtn">💡 灵感一招（先自己摆一套，再看）</button>
+      <div class="ideasubhint" id="ideaSubhint">想招的过程才值钱。先自己想一套，想不出再求助。</div>
     </div>
 
     <div class="rec">
@@ -526,7 +548,17 @@ var BUILTIN=[
   sit:"你在右边路拿球，正前方一个红色就堵在你往球门冲的那条线上，他身后是空当。",
   q:"你怎么冲到能射门的位置？把你的路线画出来——画完瞄一眼：这条线有没有撞到红色身上？",
   twists:["红的不上抢，只往后退","红1身后还有人保护","你内切方向被另一个红的堵了","队友套上来想跟你做墙"],
-  tokens:[T("me",78,48),T("ball",78,51),T("opp",70,32),T("opp",52,26),T("team",50,40)]},
+  tokens:[T("me",78,48),T("ball",78,51),T("opp",70,32),T("opp",52,26),T("team",50,40)],
+  idea:{
+    name:"外带一步再内切",
+    desc:"先假装往边线带，把红1骗向外，再突然往里切到能射门的位置。",
+    steps:[
+      {type:"dribble", points:[{x:78,y:48},{x:82,y:42},{x:84,y:38}]},
+      {type:"dribble", points:[{x:84,y:38},{x:72,y:30},{x:60,y:22}]},
+      {type:"pass",    points:[{x:60,y:22},{x:46,y:8}]}
+    ]
+  }
+ },
 
  /* 白银 - 建立"接球前看"意识 */
  {id:"b7",rank:"白银",title:"X2 · 接球前先看",
@@ -581,6 +613,7 @@ function Pitch(boardId,trailId){
   var initLayout=[];         // 场景初始局面快照（每套解法画完后还原到这）
   var strokes=[];            // 当前这套解法已画的笔: {type,points:[{x,y}]}
   var solutions=[];          // 已完成的解法(进球闭环): {steps:[strokes]}
+  var demoStrokes=[];        // v1.7 演示笔（紫色），不进solutions，不参与commit/undo
   var drawing=null;          // 正在拖动产生的笔
   var onChange=null;         // 笔数/解法数变化回调
   function restoreLayout(){tokens.forEach(function(t,i){if(initLayout[i]){t.x=initLayout[i].x;t.y=initLayout[i].y;}});initBallAttach();}
@@ -690,6 +723,26 @@ function Pitch(boardId,trailId){
       strokeStyle(p,drawing.type); p.setAttribute("opacity","0.9"); p.removeAttribute("marker-end");
       trails.appendChild(p);
     }
+    // v1.7 演示笔（紫色叠加层）
+    demoStrokes.forEach(function(st,idx){
+      var pp=pct2px(st.points,W,H);
+      var p=mk("path");
+      p.setAttribute("d",st.type==="dribble"?wavyAlong(pp):smoothPath(pp));
+      p.setAttribute("fill","none"); p.setAttribute("stroke-linecap","round"); p.setAttribute("stroke-linejoin","round");
+      p.setAttribute("stroke","#d9b9ff");
+      if(st.type==="pass"){p.setAttribute("stroke-width","2.6");p.setAttribute("stroke-dasharray","7 6");}else{p.setAttribute("stroke-width","2.8");}
+      p.setAttribute("marker-end","url(#ar-idea)");
+      p.setAttribute("opacity",st._fading?"0.35":"0.95");
+      trails.appendChild(p);
+      if(pp.length){
+        var c=mk("circle");c.setAttribute("cx",pp[0].x);c.setAttribute("cy",pp[0].y);c.setAttribute("r","8");
+        c.setAttribute("fill","#2a1f33");c.setAttribute("stroke","#d9b9ff");c.setAttribute("stroke-width","1.5");
+        c.setAttribute("opacity",st._fading?"0.4":"1"); trails.appendChild(c);
+        var tx=mk("text");tx.setAttribute("x",pp[0].x);tx.setAttribute("y",pp[0].y+3.5);tx.setAttribute("text-anchor","middle");
+        tx.setAttribute("font-size","10");tx.setAttribute("font-family","Oswald,sans-serif");tx.setAttribute("fill","#fff");
+        tx.setAttribute("opacity",st._fading?"0.4":"1");tx.textContent=(idx+1);trails.appendChild(tx);
+      }
+    });
   }
 
   // 球的磁吸：球粘在某球员身边的某个方位（不再和人重叠，手指能分开抓）
@@ -807,8 +860,12 @@ function Pitch(boardId,trailId){
     commitSolution:function(){ if(!strokes.length)return false; solutions.push({steps:strokes,ts:Date.now()}); strokes=[]; drawing=null; restoreLayout(); render(); if(onChange)onChange(); return true; },
     solutionCount:function(){return solutions.length;},
     solutions:function(){return solutions;},
-    clearAll:function(){strokes=[];solutions=[];drawing=null;render();if(onChange)onChange();},
-    onChange:function(fn){onChange=fn;}
+    clearAll:function(){strokes=[];solutions=[];drawing=null;demoStrokes=[];render();if(onChange)onChange();},
+    onChange:function(fn){onChange=fn;},
+    // v1.7 演示用 API
+    pushDemoStep:function(step){demoStrokes.push(step);drawTrails();},
+    fadeDemo:function(){demoStrokes.forEach(function(s){s._fading=true;});drawTrails();},
+    clearDemo:function(){demoStrokes=[];drawTrails();}
   };
 }
 
@@ -817,7 +874,8 @@ var $=function(s){return document.querySelector(s);};
 var state={scenarios:[],current:null,sessions:[],challenges:[],
   progress:{rank:"青铜",streak:0,lastDate:null,count:0,stars:0},
   draftStars:0,activeTwist:null,
-  chMode:"build",chCurrent:null,chDraftStars:0,chVerdict:null};
+  chMode:"build",chCurrent:null,chDraftStars:0,chVerdict:null,
+  ideaSeen:false,ideaPlaying:false};
 var mainPitch, chPitch;
 
 function todayStr(){var d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
@@ -854,7 +912,11 @@ function loadScenario(id,save){
   barStyle.textContent="#scnCard:before{background:"+col+"!important}";
   mainPitch.set(s.tokens);
   state.activeTwist=null;
-  renderTwists(); updateOptUI();
+  // v1.7 重置 idea 状态
+  state.ideaSeen=false; state.ideaPlaying=false;
+  mainPitch.clearDemo();
+  $("#ideaHint").classList.remove("on");
+  renderTwists(); updateOptUI(); updateIdeaUI();
   if(save)store.setJSON(K.current,id);
 }
 function renderTwists(){
@@ -894,9 +956,65 @@ function updateOptUI(){
   }else{
     nu.textContent = "想出 "+sols+" 套不同解法，太强了。挑一个你最得意的，跟爸爸说说为什么。";
   }
+  updateIdeaUI();
 }
 
-/* ---------- bindings ---------- */
+// v1.7 updateIdeaUI + playIdeaDemo
+function updateIdeaUI(){
+  var box=$("#ideaBox"), btn=$("#ideaBtn"), sub=$("#ideaSubhint");
+  var idea=state.current&&state.current.idea;
+  if(!idea){ box.classList.remove("show"); return; }
+  box.classList.add("show");
+  var sols=mainPitch.solutionCount();
+  if(state.ideaPlaying){
+    btn.className="ideabtn unlocked"; btn.disabled=true;
+    btn.textContent="💡 演示中…";
+    sub.textContent="看完，再用自己的方法打一套——把这招塞进去试试。";
+    return;
+  }
+  if(sols<1){
+    btn.className="ideabtn locked"; btn.disabled=true;
+    btn.textContent="💡 灵感一招（先自己摆一套，再看）";
+    sub.textContent="想招的过程才值钱。先自己想一套，想不出再求助。";
+  }else if(!state.ideaSeen){
+    btn.className="ideabtn unlocked"; btn.disabled=false;
+    btn.textContent="💡 没思路？看一招";
+    sub.textContent="一招新的——看完再来一套自己的。";
+  }else{
+    btn.className="ideabtn seen"; btn.disabled=false;
+    btn.textContent="已看过 · 重新看一次";
+    sub.textContent="爸爸可以问一句：「如果对方不吃这招呢？」";
+  }
+}
+function playIdeaDemo(){
+  var idea=state.current&&state.current.idea;
+  if(!idea||!idea.steps||!idea.steps.length)return;
+  if(state.ideaPlaying)return;
+  state.ideaPlaying=true; updateIdeaUI();
+  mainPitch.clearDemo();
+  var i=0;
+  function nextStep(){
+    if(i>=idea.steps.length){
+      setTimeout(function(){
+        mainPitch.fadeDemo();
+        setTimeout(function(){
+          mainPitch.clearDemo();
+          state.ideaPlaying=false;
+          state.ideaSeen=true;
+          $("#ideaHintName").textContent=idea.name;
+          $("#ideaHint").classList.add("on");
+          updateIdeaUI();
+        },1200);
+      },1500);
+      return;
+    }
+    var st=idea.steps[i];
+    mainPitch.pushDemoStep({type:st.type, points:st.points.map(function(p){return {x:p.x,y:p.y};})});
+    i++; setTimeout(nextStep,900);
+  }
+  $("#board").scrollIntoView({behavior:"smooth",block:"center"});
+  setTimeout(nextStep,400);
+}
 function bind(){
   document.querySelectorAll(".tabs button").forEach(function(btn){
     btn.addEventListener("click",function(){
@@ -931,6 +1049,12 @@ function bind(){
   });
   // 复位重画（清当前这套未存的笔）
   $("#optClear").addEventListener("click",function(){mainPitch.reset();});
+  // v1.7 绑 ideaBtn
+  $("#ideaBtn").addEventListener("click",function(){
+    if(state.ideaPlaying)return;
+    if(mainPitch.solutionCount()<1){toast("先自己摆一套，再看招");return;}
+    playIdeaDemo();
+  });
   // 笔数/解法数变化 → 刷新提示
   mainPitch.onChange(updateOptUI);
 
@@ -1024,9 +1148,10 @@ function saveSession(){
   });
   var sess={id:Date.now(),date:date,scn:state.current.title,rank:state.current.rank,
     stars:state.draftStars,
-    init:(state.current.tokens||[]).map(function(t){return {role:t.role,x:t.x,y:t.y};}), // 开局布置（回放用）
-    solutions:solData,            // 完整解法数据（新）
-    solCount:solData.length,      // 几套解法
+    init:(state.current.tokens||[]).map(function(t){return {role:t.role,x:t.x,y:t.y};}),
+    solutions:solData,
+    solCount:solData.length,
+    ideaSeen:!!state.ideaSeen,
     ans:$("#kidAns").value.trim(),note:$("#dadNote").value.trim()};
   state.sessions.unshift(sess);
   var p=state.progress;
@@ -1035,7 +1160,12 @@ function saveSession(){
   store.setJSON(K.sessions,state.sessions); store.setJSON(K.progress,p);
   paintStreak(); renderHistory();
   $("#kidAns").value="";$("#dadNote").value="";state.draftStars=0;paintStars("#stars",0);
-  mainPitch.clearAll();state.activeTwist=null;updateOptUI();
+  mainPitch.clearAll();state.activeTwist=null;
+  // v1.7 保存后重置 idea 状态
+  state.ideaSeen=false; state.ideaPlaying=false;
+  mainPitch.clearDemo();
+  $("#ideaHint").classList.remove("on");
+  updateOptUI();
   toast("已记录 ✓ 连续 "+p.streak+" 天 · 累计 "+p.count+" 次");
 }
 function renderHistory(){
@@ -1046,10 +1176,11 @@ function renderHistory(){
     var stars=s.stars?'<span class="ss">'+"★".repeat(s.stars)+'</span>':'';
     var nsol=(s.solCount!=null?s.solCount:(s.opts||0));
     var ob=nsol>0?'<span class="badge">'+nsol+' 套解法</span>':'';
+    var ib=s.ideaSeen?'<span class="badge" style="background:#2a1f33;border-color:#6b5380;color:#d9b9ff">💡 看过招</span>':'';
     var ans=s.ans?'<div class="ans"><b>他说：</b>'+esc(s.ans)+'</div>':'';
     var note=s.note?'<div class="note">📝 '+esc(s.note)+'</div>':'';
     var btns='<div class="hbtns">'+(nsol>0?'<button class="hbtn rp" data-id="'+s.id+'">▶ 回放</button>':'')+'<button class="hbtn cp" data-id="'+s.id+'">📋 复制这次</button></div>';
-    return '<div class="hcard"><div class="top"><span class="d">'+s.date+'</span><span class="t">'+esc(s.scn)+'</span>'+ob+stars+'</div>'+ans+note+btns+'</div>';
+    return '<div class="hcard"><div class="top"><span class="d">'+s.date+'</span><span class="t">'+esc(s.scn)+'</span>'+ob+ib+stars+'</div>'+ans+note+btns+'</div>';
   }).join("");
   L.querySelectorAll(".hbtn.rp").forEach(function(b){b.addEventListener("click",function(){openReplay(+this.dataset.id);});});
   L.querySelectorAll(".hbtn.cp").forEach(function(b){b.addEventListener("click",function(){copySession(+this.dataset.id);});});
@@ -1249,7 +1380,7 @@ function copySession(id){
   var s=state.sessions.find(function(x){return x.id===id;}); if(!s)return;
   var L=[];
   L.push("乔飞战术板 · 单次训练记录");
-  L.push("日期:"+s.date+" | 场景:"+s.scn+" ("+s.rank+") | 家长星:"+(s.stars||0)+" | 解法数:"+(s.solCount!=null?s.solCount:(s.solutions?s.solutions.length:0)));
+  L.push("日期:"+s.date+" | 场景:"+s.scn+" ("+s.rank+") | 家长星:"+(s.stars||0)+" | 解法数:"+(s.solCount!=null?s.solCount:(s.solutions?s.solutions.length:0))+(s.ideaSeen?" | 看过灵感一招":""));
   if(s.ans)L.push("他说:"+s.ans);
   if(s.note)L.push("备注:"+s.note);
   L.push("坐标0-100；y越小越靠近对方球门(进攻方向)。手段:传=传球,跑=跑动,带=带球。");
