@@ -328,7 +328,7 @@
     <!-- 灵感一招：只在场景有配 idea 时才显示；初始锁定 -->
     <div class="ideabox" id="ideaBox">
       <button class="ideabtn locked" id="ideaBtn">💡 灵感一招（先自己摆一套，再看）</button>
-      <div class="ideasubhint" id="ideaSubhint">想招的过程才值钱。先自己想一套，想不出再求助。</div>
+      <div class="ideasubhint" id="ideaSubhint">想招的过程才值钱。先自己摆一套，再看看别的踢法。</div>
     </div>
 
     <div class="rec">
@@ -1015,10 +1015,10 @@ function updateIdeaUI(){
   if(sols<1){
     btn.className="ideabtn locked"; btn.disabled=true;
     btn.textContent="💡 灵感一招（先自己摆一套，再看）";
-    sub.textContent="想招的过程才值钱。先自己想一套，想不出再求助。";
+    sub.textContent="想招的过程才值钱。先自己摆一套，再看看别的踢法。";
   }else if(!state.ideaSeen){
     btn.className="ideabtn unlocked"; btn.disabled=false;
-    btn.textContent="💡 没思路？看一招";
+    btn.textContent="💡 来一招新踢法";
     sub.textContent="一招新的——看完再来一套自己的。";
   }else{
     btn.className="ideabtn seen"; btn.disabled=false;
@@ -1216,7 +1216,7 @@ function renderHistory(){
     var stars=s.stars?'<span class="ss">'+"★".repeat(s.stars)+'</span>':'';
     var nsol=(s.solCount!=null?s.solCount:(s.opts||0));
     var ob=nsol>0?'<span class="badge">'+nsol+' 套解法</span>':'';
-    var ib=s.ideaSeen?'<span class="badge" style="background:#2a1f33;border-color:#6b5380;color:#d9b9ff">💡 看过招</span>':'';
+    var ib='';
     var ans=s.ans?'<div class="ans"><b>他说：</b>'+esc(s.ans)+'</div>':'';
     var note=s.note?'<div class="note">📝 '+esc(s.note)+'</div>':'';
     var btns='<div class="hbtns">'+(nsol>0?'<button class="hbtn rp" data-id="'+s.id+'">▶ 回放</button>':'')+'<button class="hbtn cp" data-id="'+s.id+'">📋 复制这次</button></div>';
