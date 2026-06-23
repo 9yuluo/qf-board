@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-title" content="乔飞战术板">
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=3">
 <link rel="icon" type="image/png" href="apple-touch-icon.png?v=3">
-<title>乔飞的战术板 v1.7</title>
+<title>乔飞的战术板 v1.8</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -70,6 +70,7 @@
   .markings,.trails{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
   .tok{position:absolute;width:42px;height:42px;margin:-21px 0 0 -21px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:"Oswald",sans-serif;font-weight:700;font-size:13px;color:#10100c;cursor:grab;touch-action:none;box-shadow:0 4px 10px #00000066,inset 0 1px 0 #ffffff66;transition:transform .08s}
   .tok:active{cursor:grabbing}.tok.drag{transform:scale(1.12);z-index:9}
+  .tok.reacting{transition:left .4s ease-out, top .4s ease-out, transform .08s}
   .tok.me{background:radial-gradient(circle at 35% 30%,#ffe79a,var(--me));color:#241a00;box-shadow:0 0 0 3px #ffc93c44,0 5px 14px #00000077}
   .tok.team{background:radial-gradient(circle at 35% 30%,#8fc0ff,var(--team));color:#06224d}
   .tok.opp{background:radial-gradient(circle at 35% 30%,#ffa3a3,var(--opp));color:#430a0a}
@@ -108,6 +109,14 @@
   .onudge{font-size:12.5px;color:var(--me);margin-top:9px;text-align:center;min-height:1px;opacity:.9}
 
   /* 灵感一招 idea card */
+  .reactchip{display:flex;align-items:center;gap:7px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin-bottom:10px;font-size:12.5px;color:var(--mut2);cursor:pointer;user-select:none}
+  .reactchip.on{border-color:#7d3a3a;background:#2a1717;color:#ffb3b3}
+  .reactchip .sw{width:30px;height:18px;background:#3c372c;border-radius:999px;position:relative;flex:none;transition:.2s}
+  .reactchip .sw:after{content:"";position:absolute;left:2px;top:2px;width:14px;height:14px;background:#a89f8f;border-radius:50%;transition:.2s}
+  .reactchip.on .sw{background:#7d3a3a}
+  .reactchip.on .sw:after{left:14px;background:#ffd4d4}
+  .reactchip .lbl{flex:1}
+  .reactchip .meta{font-size:10.5px;color:#7c7464;letter-spacing:.4px;font-family:"Oswald",sans-serif}
   .ideahint{display:none;background:#241d10;border:1px solid #5a4a24;border-radius:11px;padding:10px 12px;font-size:13.5px;line-height:1.45;margin-bottom:10px;color:var(--me)}
   .ideahint.on{display:block}
   .ideahint b{color:var(--me)}
@@ -260,6 +269,12 @@
     </div>
 
     <!-- 看完招后顶部出现的提示条 -->
+    <!-- v1.8: 对手反应开关 (只在场景配了 reactions 时显示) -->
+    <div class="reactchip on" id="reactChip" style="display:none">
+      <div class="sw"></div>
+      <div class="lbl">🤖 对手会动 · 看着他怎么反应</div>
+      <div class="meta" id="reactMeta">ON</div>
+    </div>
     <div class="ideahint" id="ideaHint">🎯 试试把 <b id="ideaHintName">这招</b> 用进下一套</div>
 
     <div class="twrap" id="twrap">
@@ -507,7 +522,7 @@ var store={
     try{if(window.storage){await window.storage.set(k,s);}}catch(e){}
   }
 };
-var K={custom:"lab_custom_scn",sessions:"lab_sessions",progress:"lab_progress",current:"lab_current",ch:"lab_challenges"};
+var K={custom:"lab_custom_scn",sessions:"lab_sessions",progress:"lab_progress",current:"lab_current",ch:"lab_challenges",reactOn:"lab_react_on"};
 
 /* ---------- data ---------- */
 var RANKS={青铜:"--bronze",白银:"--silver",黄金:"--gold",王者:"--king"};
@@ -547,7 +562,23 @@ var BUILTIN=[
       {type:"pass", points:[{x:50,y:52},{x:80,y:28}]},
       {type:"dribble", points:[{x:80,y:28},{x:72,y:18},{x:60,y:10}]}
     ]
-  }
+  },
+  // ===== v1.8 对手反应规则（仅 b3）=====
+  // 一次只触发一条；按数组顺序优先级；不告诉孩子规则；一套里同条最多触发 2 次
+  reactions:[
+    { id:"follow_pass",
+      trigger:{ type:"pass", landing_in:{x:[35,65], y:[20,45]} },
+      who:{ role:"opp", initIndex:0 },           // 红1（初始 56,40）
+      move:{ toward:"ball", distance:6 } },
+    { id:"mark_me",
+      trigger:{ type:"run", role:"me", min_distance:8 },
+      who:{ role:"opp", initIndex:1 },           // 红2（初始 70,38）
+      move:{ toward:"me", ratio:0.6 } },
+    { id:"press_ball",
+      trigger:{ type:"ball_idle", duration_ms:1500 },
+      who:{ role:"opp", nearest_to:"ball" },
+      move:{ toward:"ball", distance:8 } }
+  ]
  },
  {id:"b4",rank:"青铜",title:"W1 · 边路1对1",
   sit:"你在右边路拿球，正面1个边后卫，他身后是空当。",
@@ -656,7 +687,12 @@ function Pitch(boardId,trailId){
   var demoStrokes=[];        // v1.7 演示笔（紫色），不进solutions，不参与commit/undo
   var drawing=null;          // 正在拖动产生的笔
   var onChange=null;         // 笔数/解法数变化回调
-  function restoreLayout(){tokens.forEach(function(t,i){if(initLayout[i]){t.x=initLayout[i].x;t.y=initLayout[i].y;}});initBallAttach();}
+  // v1.8 对手反应：事件钩子 + 球静止计时
+  var hooks={ onPassComplete:null, onRunComplete:null };
+  var lastBallActivity=Date.now();
+  function bumpBallActivity(){ lastBallActivity=Date.now(); }
+  var reactTrailNodes=[];
+  function restoreLayout(){tokens.forEach(function(t,i){if(initLayout[i]){t.x=initLayout[i].x;t.y=initLayout[i].y;}});initBallAttach();bumpBallActivity();}
   function clientWH(){return [board.clientWidth,board.clientHeight];}
   function mk(t){return document.createElementNS("http://www.w3.org/2000/svg",t);}
 
@@ -724,10 +760,25 @@ function Pitch(boardId,trailId){
   }
   function pct2px(pts,W,H){return pts.map(function(p){return {x:p.x/100*W,y:p.y/100*H};});}
 
+  // v1.8 对手反应灰色虚线轨迹（短暂显示后淡出）
+  function drawReactTrail(from,to){
+    var wh=clientWH(),W=wh[0],H=wh[1];
+    var pp=pct2px([from,to],W,H);
+    var p=mk("path");
+    p.setAttribute("d","M"+pp[0].x+","+pp[0].y+" L"+pp[1].x+","+pp[1].y);
+    p.setAttribute("fill","none"); p.setAttribute("stroke","#a89f8f"); p.setAttribute("stroke-width","1.5");
+    p.setAttribute("stroke-dasharray","3 4"); p.setAttribute("opacity","0.7"); p.setAttribute("stroke-linecap","round");
+    trails.appendChild(p); reactTrailNodes.push(p);
+    setTimeout(function(){
+      p.style.transition="opacity .5s"; p.setAttribute("opacity","0");
+      setTimeout(function(){ if(p.parentNode)p.parentNode.removeChild(p); var i=reactTrailNodes.indexOf(p); if(i>=0)reactTrailNodes.splice(i,1); },500);
+    },800);
+  }
+
   function drawTrails(){
     var wh=clientWH(),W=wh[0],H=wh[1];
     trails.setAttribute("viewBox","0 0 "+W+" "+H);
-    Array.prototype.slice.call(trails.children).forEach(function(c){if(c.tagName.toLowerCase()!=="defs")c.remove();});
+    Array.prototype.slice.call(trails.children).forEach(function(c){if(c.tagName.toLowerCase()!=="defs"&&reactTrailNodes.indexOf(c)<0)c.remove();});
     // 已完成的解法 → 淡显，带套号
     solutions.forEach(function(sol,si){
       sol.steps.forEach(function(st){
@@ -808,7 +859,7 @@ function Pitch(boardId,trailId){
   }
   // 球落地结算：吸到最近球员、停在"来球那一侧"；够不到则成松球
   function settleBall(){
-    var b=ballToken(); if(!b)return;
+    var b=ballToken(); if(!b)return null;
     var best=null,bd=52;
     tokens.forEach(function(t){if(t.role==="ball")return;var d=pxDist(t,b);if(d<bd){bd=d;best=t;}});
     if(best){
@@ -816,7 +867,8 @@ function Pitch(boardId,trailId){
       var ang=Math.atan2(b.y-best.y, b.x-best.x);
       if(!isFinite(ang)||(b.x===best.x&&b.y===best.y))ang=-Math.PI/2;
       placeBall(b,best,ang);
-    }else{ b.attachedTo=null; } // 松球，留在原地
+      return best;
+    }else{ b.attachedTo=null; return null; } // 松球，留在原地
   }
   // 场景加载时：球若靠近某人，吸附到他朝球门一侧（开局自然在脚前）
   function initBallAttach(){
@@ -841,6 +893,7 @@ function Pitch(boardId,trailId){
       var r=board.getBoundingClientRect();
       function P(ev){return {x:Math.max(2,Math.min(98,(ev.clientX-r.left)/r.width*100)),y:Math.max(2,Math.min(98,(ev.clientY-r.top)/r.height*100))};}
       var start=P(e);
+      var startPos={x:t.x,y:t.y}; // v1.8 触发器判定用
       // 判定这一拖是什么线
       var ball=ballToken();
       var holder=ball?holderOf(ball):null;
@@ -870,13 +923,23 @@ function Pitch(boardId,trailId){
         el.classList.remove("drag");try{el.releasePointerCapture(e.pointerId);}catch(_){}
         el.removeEventListener("pointermove",move);el.removeEventListener("pointerup",up);el.removeEventListener("pointercancel",up);
         // 拖球→落地结算(吸到最近人的接球侧/或成松球)；拖带球的人→球已贴在前方，保持
-        if(t.role==="ball"){ settleBall(); }
+        var receiver=null;
+        if(t.role==="ball"){ receiver=settleBall(); }
         // 成笔（移动超过阈值才算一笔）
         if(drawing&&drawing.points.length>=2){
           var first=drawing.points[0],lastp=drawing.points[drawing.points.length-1];
           if(Math.hypot(lastp.x-first.x,lastp.y-first.y)>=3)strokes.push(drawing);
         }
         drawing=null; render(); if(onChange)onChange();
+        bumpBallActivity();
+        // v1.8 触发对手反应钩子
+        var dx=t.x-startPos.x, dy=t.y-startPos.y;
+        var dist=Math.hypot(dx*3, dy*4); // 按 3:4 比例近似视觉距离
+        if(t.role==="ball" && hooks.onPassComplete){
+          hooks.onPassComplete({x:t.x,y:t.y}, receiver);
+        }else if(t.role!=="ball" && hooks.onRunComplete){
+          hooks.onRunComplete(t, startPos, {x:t.x,y:t.y}, dist, dragHasBall);
+        }
       }
       el.addEventListener("pointermove",move);el.addEventListener("pointerup",up);el.addEventListener("pointercancel",up);
     });
@@ -887,7 +950,7 @@ function Pitch(boardId,trailId){
 
   return {
     el:board,
-    set:function(arr){tokens=arr.map(function(t,i){return {id:i+"_"+Math.random().toString(36).slice(2,6),role:t.role,x:t.x,y:t.y};});initLayout=arr.map(function(t){return {x:t.x,y:t.y};});strokes=[];solutions=[];drawing=null;initBallAttach();render();},
+    set:function(arr){tokens=arr.map(function(t,i){return {id:i+"_"+Math.random().toString(36).slice(2,6),role:t.role,x:t.x,y:t.y,_initIdx:i};});initLayout=arr.map(function(t){return {x:t.x,y:t.y};});strokes=[];solutions=[];drawing=null;demoStrokes=[];reactTrailNodes.forEach(function(n){if(n.parentNode)n.parentNode.removeChild(n);});reactTrailNodes=[];initBallAttach();render();bumpBallActivity();},
     tokens:function(){return tokens;},
     add:function(role){tokens.push({id:"a"+Date.now(),role:role,x:50,y:role==="ball"?60:66});render();},
     reset:function(){strokes=[];drawing=null;restoreLayout();render();if(onChange)onChange();}, // 复位=清当前这套笔 + 棋子回到开局
@@ -905,7 +968,20 @@ function Pitch(boardId,trailId){
     // v1.7 演示用 API
     pushDemoStep:function(step){demoStrokes.push(step);drawTrails();},
     fadeDemo:function(){demoStrokes.forEach(function(s){s._fading=true;});drawTrails();},
-    clearDemo:function(){demoStrokes=[];drawTrails();}
+    clearDemo:function(){demoStrokes=[];drawTrails();},
+    // v1.8 对手反应 API
+    setHooks:function(h){hooks=Object.assign(hooks,h||{});},
+    lastBallActivity:function(){return lastBallActivity;},
+    bumpBallActivity:bumpBallActivity,
+    ballToken:ballToken,
+    holderOf:holderOf,
+    moveTokenAnimated:function(tok,newX,newY){
+      tok.x=newX; tok.y=newY;
+      var el=board.querySelector('.tok[data-id="'+tok.id+'"]');
+      if(el){ el.classList.add("reacting"); el.style.left=newX+"%"; el.style.top=newY+"%";
+        setTimeout(function(){ if(el)el.classList.remove("reacting"); },450); }
+    },
+    drawReactTrail:drawReactTrail
   };
 }
 
@@ -915,7 +991,9 @@ var state={scenarios:[],current:null,sessions:[],challenges:[],
   progress:{rank:"青铜",streak:0,lastDate:null,count:0,stars:0},
   draftStars:0,activeTwist:null,
   chMode:"build",chCurrent:null,chDraftStars:0,chVerdict:null,
-  ideaSeen:false,ideaPlaying:false};
+  ideaSeen:false,ideaPlaying:false,
+  // v1.8 对手反应
+  reactOn:true, reactionsTriggered:{}, ballIdleTimer:null};
 var mainPitch, chPitch;
 
 function todayStr(){var d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
@@ -931,6 +1009,20 @@ function esc(s){return String(s).replace(/[&<>]/g,function(c){return {"&":"&amp;
   state.sessions=await store.getJSON(K.sessions)||[];
   state.challenges=await store.getJSON(K.ch)||[];
   var p=await store.getJSON(K.progress); if(p)state.progress=Object.assign(state.progress,p);
+  // v1.8 读开关状态（首次默认 ON）
+  var ro=await store.getJSON(K.reactOn);
+  state.reactOn=(ro===null||ro===undefined)?true:!!ro;
+  // v1.8 给 mainPitch 注入反应钩子（chPitch 不注入，挑战板对手是死的）
+  mainPitch.setHooks({
+    onPassComplete:function(landing,receiver){ tryReactions({type:"pass", landing:landing, receiver:receiver}); },
+    onRunComplete:function(player,from,to,dist,withBall){ tryReactions({type:"run", player:player, from:from, to:to, distance:dist, withBall:withBall}); }
+  });
+  // v1.8 球静止 1.5 秒触发器
+  state.ballIdleTimer=setInterval(function(){
+    if(!state.current||!state.current.reactions||!state.reactOn)return;
+    var idle=Date.now()-mainPitch.lastBallActivity();
+    if(idle>=1500 && idle<2200){ tryReactions({type:"ball_idle"}); mainPitch.bumpBallActivity(); }
+  },300);
   var curId=await store.getJSON(K.current)||BUILTIN[0].id;
   loadScenario(curId,false);
   $("#rankSel").value=state.progress.rank; paintRank(); paintStreak();
@@ -942,6 +1034,80 @@ var barStyle=document.createElement("style"); document.head.appendChild(barStyle
 function paintRank(){$("#rankdot").style.background=cssvar(RANKS[state.progress.rank]||"--bronze");}
 function paintStreak(){$("#streakN").textContent=state.progress.streak||0;}
 
+/* ---------- v1.8 对手反应引擎 ---------- */
+function tryReactions(evt){
+  if(!state.current||!state.current.reactions||!state.current.reactions.length)return;
+  if(!state.reactOn)return;
+  var rules=state.current.reactions;
+  for(var i=0;i<rules.length;i++){
+    var r=rules[i];
+    if((state.reactionsTriggered[r.id]||0)>=2)continue;   // 一套里同条最多 2 次
+    if(matchTrigger(r.trigger,evt)){
+      applyReaction(r);
+      state.reactionsTriggered[r.id]=(state.reactionsTriggered[r.id]||0)+1;
+      return;  // 一次只触发一条（按优先级贪心）
+    }
+  }
+}
+function matchTrigger(trig,evt){
+  if(trig.type!==evt.type)return false;
+  if(trig.type==="pass"){
+    var L=evt.landing; if(!L)return false;
+    var bx=trig.landing_in.x, by=trig.landing_in.y;
+    return L.x>=bx[0]&&L.x<=bx[1]&&L.y>=by[0]&&L.y<=by[1];
+  }
+  if(trig.type==="run"){
+    if(trig.role&&evt.player&&evt.player.role!==trig.role)return false;
+    return (evt.distance||0)>=(trig.min_distance||0);
+  }
+  if(trig.type==="ball_idle"){ return true; }  // 计时器侧已判定时长
+  return false;
+}
+// 按 who 找到要移动的对手棋子
+function resolveReactor(who){
+  var toks=mainPitch.tokens();
+  if(who.nearest_to==="ball"){
+    var b=mainPitch.ballToken(); if(!b)return null;
+    var best=null,bd=1e9;
+    toks.forEach(function(t){ if(t.role!=="opp")return; var d=Math.hypot((t.x-b.x)*3,(t.y-b.y)*4); if(d<bd){bd=d;best=t;} });
+    return best;
+  }
+  if(who.initIndex!=null){
+    // 按初始索引找第 N 个 opp
+    var opps=toks.filter(function(t){return t.role==="opp";});
+    // _initIdx 保留了 set 时的原始顺序；按 tokens 里 opp 的出现序取
+    return opps[who.initIndex]||null;
+  }
+  return null;
+}
+function applyReaction(r){
+  var actor=resolveReactor(r.who); if(!actor)return;
+  var from={x:actor.x,y:actor.y};
+  var target=null;
+  if(r.move.toward==="ball"){ target=mainPitch.ballToken(); }
+  else if(r.move.toward==="me"){ mainPitch.tokens().forEach(function(t){if(t.role==="me")target=t;}); }
+  if(!target)return;
+  var dx=target.x-actor.x, dy=target.y-actor.y;
+  var len=Math.hypot(dx,dy); if(len<0.01)return;
+  var moveDist;
+  if(r.move.ratio!=null){ moveDist=len*r.move.ratio; }
+  else { moveDist=Math.min(r.move.distance||0, len-3); }  // 留 3 单位不贴脸
+  if(moveDist<=0)return;
+  var nx=actor.x+dx/len*moveDist, ny=actor.y+dy/len*moveDist;
+  nx=Math.max(2,Math.min(98,nx)); ny=Math.max(2,Math.min(98,ny));
+  mainPitch.drawReactTrail(from,{x:nx,y:ny});
+  mainPitch.moveTokenAnimated(actor,nx,ny);
+}
+// 开关显隐 + ON/OFF 文案
+function updateReactChip(){
+  var chip=$("#reactChip");
+  var has=state.current&&state.current.reactions&&state.current.reactions.length;
+  if(!has){ chip.style.display="none"; return; }
+  chip.style.display="flex";
+  chip.classList.toggle("on",!!state.reactOn);
+  $("#reactMeta").textContent=state.reactOn?"ON":"OFF";
+}
+
 /* ---------- today: scenario ---------- */
 function loadScenario(id,save){
   var s=state.scenarios.find(function(x){return x.id===id;})||state.scenarios[0];
@@ -952,6 +1118,10 @@ function loadScenario(id,save){
   barStyle.textContent="#scnCard:before{background:"+col+"!important}";
   mainPitch.set(s.tokens);
   state.activeTwist=null;
+  // v1.8 对手反应：重置触发计数 + 开关显隐
+  state.reactionsTriggered={};
+  mainPitch.bumpBallActivity();
+  updateReactChip();
   // v1.7 重置 idea 状态
   state.ideaSeen=false; state.ideaPlaying=false;
   mainPitch.clearDemo();
@@ -1085,10 +1255,19 @@ function bind(){
   $("#goalBtn").addEventListener("click",function(){
     if(mainPitch.strokeCount()===0){toast("先拖球员/球，把这套怎么打进去摆出来");return;}
     mainPitch.commitSolution();
+    state.reactionsTriggered={};  // v1.8 新一套，反应触发计数清零
+    updateReactChip();
     toast("第 "+mainPitch.solutionCount()+" 套解法存下了 ⚽");
   });
   // 复位重画（清当前这套未存的笔）
-  $("#optClear").addEventListener("click",function(){mainPitch.reset();});
+  $("#optClear").addEventListener("click",function(){mainPitch.reset();state.reactionsTriggered={};});
+  // v1.8 对手反应开关
+  $("#reactChip").addEventListener("click",function(){
+    state.reactOn=!state.reactOn;
+    store.setJSON(K.reactOn,state.reactOn);
+    updateReactChip();
+    toast(state.reactOn?"对手会动了 🤖":"对手不动了");
+  });
   // v1.7 绑 ideaBtn
   $("#ideaBtn").addEventListener("click",function(){
     if(state.ideaPlaying)return;
@@ -1192,6 +1371,7 @@ function saveSession(){
     solutions:solData,
     solCount:solData.length,
     ideaSeen:!!state.ideaSeen,
+    reactOn:(state.current.reactions&&state.current.reactions.length)?!!state.reactOn:null,
     ans:$("#kidAns").value.trim(),note:$("#dadNote").value.trim()};
   state.sessions.unshift(sess);
   var p=state.progress;
@@ -1420,7 +1600,7 @@ function copySession(id){
   var s=state.sessions.find(function(x){return x.id===id;}); if(!s)return;
   var L=[];
   L.push("乔飞战术板 · 单次训练记录");
-  L.push("日期:"+s.date+" | 场景:"+s.scn+" ("+s.rank+") | 家长星:"+(s.stars||0)+" | 解法数:"+(s.solCount!=null?s.solCount:(s.solutions?s.solutions.length:0))+(s.ideaSeen?" | 看过灵感一招":""));
+  L.push("日期:"+s.date+" | 场景:"+s.scn+" ("+s.rank+") | 家长星:"+(s.stars||0)+" | 解法数:"+(s.solCount!=null?s.solCount:(s.solutions?s.solutions.length:0))+(s.ideaSeen?" | 看过灵感一招":"")+(s.reactOn===true?" | 🤖对手会动 ON":s.reactOn===false?" | 对手会动 OFF":""));
   if(s.ans)L.push("他说:"+s.ans);
   if(s.note)L.push("备注:"+s.note);
   L.push("坐标0-100；y越小越靠近对方球门(进攻方向)。手段:传=传球,跑=跑动,带=带球。");
