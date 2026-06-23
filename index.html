@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-title" content="乔飞战术板">
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=3">
 <link rel="icon" type="image/png" href="apple-touch-icon.png?v=3">
-<title>乔飞的战术板 v1.7</title>
+<title>乔飞的战术板 v1.72</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -70,7 +70,7 @@
   .markings,.trails{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
   .tok{position:absolute;width:42px;height:42px;margin:-21px 0 0 -21px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:"Oswald",sans-serif;font-weight:700;font-size:13px;color:#10100c;cursor:grab;touch-action:none;box-shadow:0 4px 10px #00000066,inset 0 1px 0 #ffffff66;transition:transform .08s}
   .tok:active{cursor:grabbing}.tok.drag{transform:scale(1.12);z-index:9}
-  .tok.me{background:radial-gradient(circle at 35% 30%,#ffe79a,var(--me));color:#241a00;box-shadow:0 0 0 3px #ffc93c44,0 5px 14px #00000077}
+  .tok.me{background:radial-gradient(circle at 35% 30%,#8fc0ff,var(--team));color:#06224d}
   .tok.team{background:radial-gradient(circle at 35% 30%,#8fc0ff,var(--team));color:#06224d}
   .tok.opp{background:radial-gradient(circle at 35% 30%,#ffa3a3,var(--opp));color:#430a0a}
   .tok.ball{width:26px;height:26px;margin:-13px 0 0 -13px;background:var(--ball);font-size:14px;color:#222}
@@ -292,8 +292,7 @@
     </div>
 
     <div class="legend">
-      <span><i class="lg" style="background:var(--me)"></i>你</span>
-      <span><i class="lg" style="background:var(--team)"></i>队友</span>
+      <span><i class="lg" style="background:var(--team)"></i>我方</span>
       <span><i class="lg" style="background:var(--opp)"></i>对手</span>
       <span><i class="lg" style="background:var(--ball)"></i>球</span>
       <span style="color:#6f6757">↑ 进攻方向</span>
@@ -408,8 +407,7 @@
       <svg class="trails" id="chTrails"></svg>
     </div>
     <div class="legend">
-      <span><i class="lg" style="background:var(--me)"></i>你</span>
-      <span><i class="lg" style="background:var(--team)"></i>队友</span>
+      <span><i class="lg" style="background:var(--team)"></i>我方</span>
       <span><i class="lg" style="background:var(--opp)"></i>对手</span>
       <span><i class="lg" style="background:var(--ball)"></i>球</span>
     </div>
@@ -665,7 +663,7 @@ function Pitch(boardId,trailId){
     tokens.forEach(function(t){
       var el=document.createElement("div");
       el.className="tok "+t.role; el.style.left=t.x+"%"; el.style.top=t.y+"%"; el.dataset.id=t.id;
-      el.innerHTML = t.role==="me"?"★":t.role==="ball"?"⚽":"";
+      el.innerHTML = t.role==="ball"?"⚽":"";
       var x=document.createElement("div"); x.className="x"; x.textContent="×"; el.appendChild(x);
       board.appendChild(el); drag(el,t);
     });
@@ -1359,7 +1357,7 @@ function renderReplayTokens(){
   (toks||[]).forEach(function(t){
     var el=document.createElement("div");el.className="tok "+t.role+" ro";
     el.style.left=t.x+"%";el.style.top=t.y+"%";
-    el.innerHTML=t.role==="me"?"★":t.role==="ball"?"⚽":"";
+    el.innerHTML=t.role==="ball"?"⚽":"";
     board.appendChild(el);
   });
 }
